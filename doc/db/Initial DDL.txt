@@ -1,0 +1,172 @@
+CREATE TABLE product (
+	id		 BIGINT,
+	name		 VARCHAR(512) NOT NULL,
+	price		 FLOAT(8) NOT NULL,
+	stock		 INTEGER NOT NULL,
+	description	 VARCHAR(512),
+	seller_user_id BIGINT NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE producthistory (
+	id		 BIGINT,
+	price		 FLOAT(8) UNIQUE NOT NULL,
+	stock		 INTEGER NOT NULL,
+	description	 VARCHAR(512),
+	cpu		 VARCHAR(512),
+	gpu		 VARCHAR(512),
+	size		 INTEGER,
+	technology	 VARCHAR(512),
+	model		 VARCHAR(512),
+	operativesystem VARCHAR(512),
+	updatetimestamp TIMESTAMP NOT NULL,
+	product_id	 BIGINT NOT NULL
+);
+
+CREATE TABLE computer (
+	cpu	 VARCHAR(512) NOT NULL,
+	gpu	 VARCHAR(512),
+	product_id BIGINT,
+	PRIMARY KEY(product_id)
+);
+
+CREATE TABLE campaign (
+	id			 BIGINT,
+	name		 VARCHAR(512) NOT NULL,
+	discount		 FLOAT(8),
+	starttimestamp	 TIMESTAMP NOT NULL,
+	expirationtimestamp TIMESTAMP NOT NULL,
+	couponnumber	 INTEGER NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE coupon (
+	starttimestamp	 TIMESTAMP NOT NULL,
+	expirationtimestamp TIMESTAMP NOT NULL,
+	campaign_id	 BIGINT,
+	PRIMARY KEY(campaign_id)
+);
+
+CREATE TABLE user (
+	id		 BIGINT,
+	name	 VARCHAR(512) UNIQUE NOT NULL,
+	firstname	 VARCHAR(512) NOT NULL,
+	lastname	 VARCHAR(512) NOT NULL,
+	email	 VARCHAR(512) UNIQUE NOT NULL,
+	phonenumber	 VARCHAR(512) UNIQUE NOT NULL,
+	passwordhash VARCHAR(256) NOT NULL,
+	isadmin	 BOOL NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE television (
+	size	 INTEGER NOT NULL,
+	technology VARCHAR(512) NOT NULL,
+	product_id BIGINT,
+	PRIMARY KEY(product_id)
+);
+
+CREATE TABLE smartphone (
+	model		 VARCHAR(512) NOT NULL,
+	operativesystem VARCHAR(512) NOT NULL,
+	product_id	 BIGINT,
+	PRIMARY KEY(product_id)
+);
+
+CREATE TABLE notification (
+	id		 BIGINT,
+	title	 VARCHAR(512) NOT NULL,
+	description VARCHAR(512),
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE commentnotification_comment (
+	comment_id					 BIGINT UNIQUE NOT NULL,
+	comment_text				 TEXT(512) NOT NULL,
+	commentnotification_comment_notification_id BIGINT NOT NULL,
+	user_id					 BIGINT NOT NULL,
+	product_id					 BIGINT NOT NULL,
+	notification_id				 BIGINT,
+	PRIMARY KEY(notification_id)
+);
+
+CREATE TABLE productnotification (
+	product_id	 BIGINT NOT NULL,
+	notification_id BIGINT,
+	PRIMARY KEY(notification_id)
+);
+
+CREATE TABLE seller (
+	companyname VARCHAR(512) NOT NULL,
+	sendaddress VARCHAR(512) NOT NULL,
+	companytin	 VARCHAR(512) UNIQUE NOT NULL,
+	user_id	 BIGINT,
+	PRIMARY KEY(user_id)
+);
+
+CREATE TABLE buyer (
+	address VARCHAR(512) NOT NULL,
+	tin	 VARCHAR(512),
+	user_id BIGINT,
+	PRIMARY KEY(user_id)
+);
+
+CREATE TABLE item (
+	quantity	 INTEGER NOT NULL,
+	buyer_user_id	 BIGINT,
+	product_id	 BIGINT,
+	buyer_user_id1 BIGINT NOT NULL,
+	PRIMARY KEY(buyer_user_id,product_id)
+);
+
+CREATE TABLE order (
+	id		 BIGINT,
+	ordertimestamp TIMESTAMP NOT NULL,
+	buyer_user_id	 BIGINT NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE classification (
+	rating	 BIGINT,
+	comment	 VARCHAR(512),
+	product_id BIGINT NOT NULL
+);
+
+CREATE TABLE item_order (
+	item_buyer_user_id BIGINT,
+	item_product_id	 BIGINT,
+	order_id		 BIGINT NOT NULL,
+	PRIMARY KEY(item_buyer_user_id,item_product_id)
+);
+
+CREATE TABLE buyer_campaign (
+	buyer_user_id BIGINT,
+	campaign_id	 BIGINT,
+	PRIMARY KEY(buyer_user_id,campaign_id)
+);
+
+ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_user_id) REFERENCES seller(user_id);
+ALTER TABLE producthistory ADD CONSTRAINT producthistory_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE computer ADD CONSTRAINT computer_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE coupon ADD CONSTRAINT coupon_fk1 FOREIGN KEY (campaign_id) REFERENCES campaign(id);
+ALTER TABLE television ADD CONSTRAINT television_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE commentnotification_comment ADD CONSTRAINT commentnotification_comment_fk1 FOREIGN KEY (commentnotification_comment_notification_id) REFERENCES commentnotification_comment(notification_id);
+ALTER TABLE commentnotification_comment ADD CONSTRAINT commentnotification_comment_fk2 FOREIGN KEY (user_id) REFERENCES user(id);
+ALTER TABLE commentnotification_comment ADD CONSTRAINT commentnotification_comment_fk3 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE commentnotification_comment ADD CONSTRAINT commentnotification_comment_fk4 FOREIGN KEY (notification_id) REFERENCES notification(id);
+ALTER TABLE productnotification ADD CONSTRAINT productnotification_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE productnotification ADD CONSTRAINT productnotification_fk2 FOREIGN KEY (notification_id) REFERENCES notification(id);
+ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
+ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
+ALTER TABLE item ADD CONSTRAINT item_fk1 FOREIGN KEY (buyer_user_id) REFERENCES buyer(user_id);
+ALTER TABLE item ADD CONSTRAINT item_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE item ADD CONSTRAINT item_fk3 FOREIGN KEY (buyer_user_id1) REFERENCES buyer(user_id);
+ALTER TABLE order ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_user_id) REFERENCES buyer(user_id);
+ALTER TABLE classification ADD CONSTRAINT classification_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_buyer_user_id) REFERENCES item(buyer_user_id);
+ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (item_product_id) REFERENCES item(product_id);
+ALTER TABLE item_order ADD CONSTRAINT item_order_fk3 FOREIGN KEY (order_id) REFERENCES order(id);
+ALTER TABLE buyer_campaign ADD CONSTRAINT buyer_campaign_fk1 FOREIGN KEY (buyer_user_id) REFERENCES buyer(user_id);
+ALTER TABLE buyer_campaign ADD CONSTRAINT buyer_campaign_fk2 FOREIGN KEY (campaign_id) REFERENCES campaign(id);
+
