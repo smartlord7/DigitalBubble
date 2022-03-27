@@ -43,6 +43,7 @@ CREATE TABLE campaign (
 CREATE TABLE coupon (
 	starttimestamp	 TIMESTAMP NOT NULL,
 	expirationtimestamp TIMESTAMP NOT NULL,
+	status		 INTEGER NOT NULL,
 	campaign_id	 BIGINT,
 	PRIMARY KEY(campaign_id)
 );
