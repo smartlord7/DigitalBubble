@@ -19,22 +19,17 @@ import logging
 from functools import wraps
 from flask import request, jsonify
 
+from data.enum.status_code_enum import StatusCodes
 from db.util import get_connection
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
 app.config['API_PREFIX'] = 'digitalbubble'
 
-StatusCodes = {
-    'success': 200,
-    'api_error': 400,
-    'internal_error': 500
-}
 
-
-def authorization(f):
+def authorization(f=None, role=None):
     @wraps(f)
-    def decorator(role, *args, **kwargs):
+    def decorator(*args, **kwargs):
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
@@ -58,6 +53,7 @@ def authorization(f):
 ##########################################################
 
 
+@authorization(role="Admin")
 @app.route(f'{app.config["API_PREFIX"]}/')
 def landing_page():
     return """
