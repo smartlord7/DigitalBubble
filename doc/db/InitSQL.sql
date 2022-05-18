@@ -1,3 +1,5 @@
+-- DDL
+
 CREATE TABLE product (
 	id		 BIGINT UNIQUE,
 	version	 BIGINT UNIQUE,
@@ -114,6 +116,8 @@ CREATE TABLE item_order (
 	PRIMARY KEY(item_id)
 );
 
+-- Constraints
+
 ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id) REFERENCES seller(user_id);
 ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
@@ -129,3 +133,91 @@ ALTER TABLE classification ADD CONSTRAINT classification_fk4 FOREIGN KEY (buyer_
 ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (order_id) REFERENCES "order"(id);
+
+-- Indexes
+
+-- FK indexes
+CREATE UNIQUE INDEX IF NOT EXISTS ClassificationProductFK
+ON classification(product_id, product_version);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ClassificationBuyerFK
+ON classification(buyer_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS CommentUserFK
+ON comment(user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS CommentProductFK
+ON comment(product_id, product_version);
+
+CREATE UNIQUE INDEX IF NOT EXISTS CommentNotificationFK
+ON comment(notification_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ItemProductFK
+ON item(product_id, product_version);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ItemOrderOrderFK
+ON item_order(order_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS OrderBuyerFK
+ON "order"(buyer_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ProductSellerFK
+ON product(seller_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS SmartphoneProductFK
+ON smartphone(product_id, product_version);
+
+CREATE UNIQUE INDEX IF NOT EXISTS TelevisionProductFK
+ON television(product_id, product_version);
+
+-- Other indexes
+
+CREATE INDEX ClassificationRating ON classification(rating);
+
+CREATE INDEX ComputerCPU ON computer(cpu);
+
+CREATE INDEX ComputerGPU ON computer(gpu);
+
+CREATE INDEX ProductName ON product(name);
+
+CREATE INDEX ProductPrice ON product(price);
+
+CREATE INDEX SellerCompanyName ON seller(company_name);
+
+CREATE INDEX SmartphoneModel ON smartphone(model);
+
+CREATE INDEX SmartphoneOS ON smartphone(operative_system);
+
+CREATE INDEX TelevisionSize ON television(size);
+
+CREATE INDEX TelevisionSize ON television(technology);
+
+CREATE INDEX UserName ON "user"(name);
+
+CREATE UNIQUE INDEX UserEmail ON "user"(email);
+
+CREATE UNIQUE INDEX UserTIN ON "user"(tin);
+
+CREATE UNIQUE INDEX UserPhoneNumber ON "user"(phone_number);
+
+-- Triggers
+
+
+-- Stored Procedures
+
+
+
+
+-- DML
+
+-- password: hello
+INSERT INTO "user"
+(id, name, first_name, email, tin, last_name, phone_number, password_hash, house_no, street_name, city, state, zip_code)
+VALUES
+(0, 'admin', 'Admin', 'admin@digitalbubble.com', '000000000', 'Administrator', 
+ '+351999999999', 
+ '9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043',
+ 1, 'Street', 'City', 'State', '1000-100')
+ 
+ INSERT INTO "admin"
+ VALUES (0)
