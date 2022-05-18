@@ -31,9 +31,9 @@ StatusCodes = {
 }
 
 
-def authorization(f):
+def authorization(f=None, role=None):
     @wraps(f)
-    def decorator(role, *args, **kwargs):
+    def decorator(*args, **kwargs):
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
@@ -56,6 +56,7 @@ def authorization(f):
 ##########################################################
 
 
+@authorization(role="Admin")
 @app.route(f'{app.config["API_PREFIX"]}/')
 def landing_page():
     return """
@@ -67,7 +68,6 @@ def landing_page():
     Digital Bubble<br/>
     <br/>
     """
-
 
 @app.route(f'{app.config["API_PREFIX"]}/user/', methods=['POST'])
 def register():
