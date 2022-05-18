@@ -182,6 +182,8 @@ CREATE INDEX ProductName ON product(name);
 
 CREATE INDEX ProductPrice ON product(price);
 
+CREATE INDEX ProductType ON product(type);
+
 CREATE INDEX SellerCompanyName ON seller(company_name);
 
 CREATE INDEX SmartphoneModel ON smartphone(model);
