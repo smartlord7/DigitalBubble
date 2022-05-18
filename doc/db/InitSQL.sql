@@ -193,7 +193,7 @@ CREATE INDEX SmartphoneOS ON smartphone(operative_system);
 
 CREATE INDEX TelevisionSize ON television(size);
 
-CREATE INDEX TelevisionSize ON television(technology);
+CREATE INDEX TelevisionTechnology ON television(technology);
 
 CREATE INDEX UserName ON "user"(name);
 
