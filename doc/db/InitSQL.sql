@@ -6,6 +6,7 @@ CREATE TABLE product (
 	name		 VARCHAR(512) NOT NULL,
 	price		 FLOAT(8) NOT NULL,
 	stock		 INTEGER NOT NULL,
+	type 		 VARCHAR(256) NOT NULL,
 	description	 VARCHAR(512),
 	seller_id BIGINT NOT NULL,
 	PRIMARY KEY(id, version)
