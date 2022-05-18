@@ -12,12 +12,13 @@
 # Sancho Simoes      <sanchosimoes@student.dei.uc.pt>
 # Rodrigo Machado    <ramachado@student.dei.uc.pt>
 
-from multiprocessing import parent_process
 import jwt
 import flask
 import logging
 from functools import wraps
 from flask import request, jsonify
+from hashlib import sha512
+from http import HTTPStatus
 
 from data.enum.status_code_enum import StatusCodes
 from db.util import get_connection
@@ -84,11 +85,18 @@ def register():
 
     logger.debug(f'POST /user - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+    if 'username' and 'email' and 'password' and 'first_name' and 'last_name' and 'tin' and 'phone_number' \
+        and 'house_no' and 'street_name' and 'city' and 'state' and 'zip_code' not in payload:
+        
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
+    password_hash = sha512(payload['password'].encode()).hexdigest()
+
+    statement = 'INSERT INTO user (username, first_name, email, tin, last_name, phone_number, password_hash, \
+        house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+    values = (payload['username'], payload['first_name'], payload['email'], payload['tin'], payload['last_name'], 
+    payload['phone_number'], password_hash, payload['username'], payload['username'])
 
 # User autentication
 @app.route(f'{app.config["API_PREFIX"]}/user/', methods=['PUT'])
@@ -108,8 +116,7 @@ def login():
     logger.debug(f'PUT /user - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -131,8 +138,7 @@ def create_product():
     logger.debug(f'POST /product - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -160,8 +166,7 @@ def update_product(product_id):
     logger.debug(f'PUT /product/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -177,8 +182,7 @@ def buy_product():
     logger.debug(f'POST /order - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -206,8 +210,7 @@ def rate_product(product_id):
     logger.debug(f'POST /rantiing/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -235,8 +238,7 @@ def create_comment(product_id):
     logger.debug(f'POST /questions/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -254,20 +256,17 @@ def reply_comment(product_id, parent_question_id):
 
     logger.info('POST /questions/<product_id>/<parent_question_id>')
 
-    logger.debug(
-        f'product_id: {product_id}, parent_question_id: {parent_question_id}')
+    logger.debug(f'product_id: {product_id}, parent_question_id: {parent_question_id}')
 
     payload = flask.request.get_json()
 
     conn = get_connection()
     cur = conn.cursor()
 
-    logger.debug(
-        f'POST /questions/<product_id>/<parent_question_id> - payload: {payload}')
+    logger.debug(f'POST /questions/<product_id>/<parent_question_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -295,8 +294,7 @@ def get_product_information(product_id):
     logger.debug(f'GET /product/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -322,8 +320,7 @@ def get_product_statistics():
     logger.debug(f'GET /report/year - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': StatusCodes['api_error'],
-                    'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
