@@ -1,6 +1,6 @@
 CREATE TABLE product (
-	id		 BIGINT,
-	version	 BIGINT,
+	id		 BIGINT UNIQUE,
+	version	 BIGINT UNIQUE,
 	name		 VARCHAR(512) NOT NULL,
 	price		 FLOAT(8) NOT NULL,
 	stock		 INTEGER NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE computer (
 	PRIMARY KEY(product_id, product_version)
 );
 
-CREATE TABLE user (
+CREATE TABLE "user" (
 	id		 SERIAL,
 	name	 VARCHAR(512) UNIQUE NOT NULL,
 	first_name	 VARCHAR(512) NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE notification (
 
 CREATE TABLE comment (
 	id	 SERIAL,
-	text	 TEXT(512) NOT NULL,
+	text	 VARCHAR(512) NOT NULL,
 	parentid BIGINT,
 	user_id		 BIGINT NOT NULL,
 	product_id	 BIGINT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE buyer (
 	PRIMARY KEY(user_id)
 );
 
-CREATE TABLE order (
+CREATE TABLE "order" (
 	id		 SERIAL,
 	order_timestamp TIMESTAMP NOT NULL,
 	buyer_id	 BIGINT NOT NULL,
@@ -115,21 +115,17 @@ CREATE TABLE item_order (
 );
 
 ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id) REFERENCES seller(user_id);
-ALTER TABLE computer ADD CONSTRAINT computer_fk1 FOREIGN KEY (product_id) REFERENCES product(id);
 ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
-ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk2 FOREIGN KEY (product_version) REFERENCES product(version);
-ALTER TABLE comment ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
+ALTER TABLE comment ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE comment ADD CONSTRAINT comment_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE comment ADD CONSTRAINT comment_fk4 FOREIGN KEY (notification_id) REFERENCES notification(id);
 ALTER TABLE item ADD CONSTRAINT item_fk1 FOREIGN KEY (notification_id) REFERENCES notification(id);
-ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
-ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
-ALTER TABLE order ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_user_id) REFERENCES buyer(user_id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk3 FOREIGN KEY (product_version) REFERENCES product(version);
+ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
+ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
+ALTER TABLE "order" ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
+ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE classification ADD CONSTRAINT classification_fk4 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
-ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
+ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
-ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (order_id) REFERENCES order(id);
+ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (order_id) REFERENCES "order"(id);
