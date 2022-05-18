@@ -25,7 +25,7 @@ CREATE TABLE "user" (
 	tin		 VARCHAR(512),
 	last_name	 VARCHAR(512) NOT NULL,
 	phone_number	 VARCHAR(512) UNIQUE NOT NULL,
-	password_hash VARCHAR(256) NOT NULL,
+	password_hash VARCHAR(128) NOT NULL,
 	house_no	 INTEGER NOT NULL,
 	street_name	 VARCHAR(512) NOT NULL,
 	city	 VARCHAR(512) NOT NULL,

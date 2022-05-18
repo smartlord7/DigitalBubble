@@ -22,6 +22,7 @@ from db.util import get_connection
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
+app.config['API_PREFIX'] = 'digitalbubble'
 
 StatusCodes = {
     'success': 200,
@@ -55,7 +56,7 @@ def authorization(f):
 ##########################################################
 
 
-@app.route('/')
+@app.route(f'{app.config["API_PREFIX"]}/')
 def landing_page():
     return """
 
@@ -68,7 +69,7 @@ def landing_page():
     """
 
 
-@app.route('/user/', methods=['POST'])
+@app.route(f'{app.config["API_PREFIX"]}/user/', methods=['POST'])
 def register():
     logger.info('POST /user')
     payload = flask.request.get_json()
