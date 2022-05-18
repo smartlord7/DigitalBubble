@@ -95,9 +95,12 @@ CREATE TABLE order (
 );
 
 CREATE TABLE classification (
-	rating					 BIGINT,
-	comment					 VARCHAR(512),
-	item_id BIGINT UNIQUE NOT NULL
+	rating		 BIGINT,
+	comment	 VARCHAR(512),
+	buyer_id	 BIGINT,
+	product_id	 BIGINT,
+	product_version BIGINT,
+	PRIMARY KEY(buyer_id, product_id, product_version)
 );
 
 CREATE TABLE admin (
@@ -124,6 +127,9 @@ ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES us
 ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
 ALTER TABLE order ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_user_id) REFERENCES buyer(user_id);
 ALTER TABLE classification ADD CONSTRAINT classification_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
+ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE classification ADD CONSTRAINT classification_fk3 FOREIGN KEY (product_version) REFERENCES product(version);
+ALTER TABLE classification ADD CONSTRAINT classification_fk4 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
 ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES user(id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (order_id) REFERENCES order(id);
