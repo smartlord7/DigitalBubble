@@ -22,7 +22,7 @@ CREATE TABLE computer (
 
 CREATE TABLE "user" (
 	id		 SERIAL,
-	name	 VARCHAR(512) UNIQUE NOT NULL,
+	user_name	 VARCHAR(512) UNIQUE NOT NULL,
 	first_name	 VARCHAR(512) NOT NULL,
 	email	 VARCHAR(512) UNIQUE NOT NULL,
 	tin		 VARCHAR(512),
@@ -195,7 +195,7 @@ CREATE INDEX TelevisionSize ON television(size);
 
 CREATE INDEX TelevisionTechnology ON television(technology);
 
-CREATE INDEX UserName ON "user"(name);
+CREATE INDEX UserName ON "user"(user_name);
 
 CREATE UNIQUE INDEX UserEmail ON "user"(email);
 
