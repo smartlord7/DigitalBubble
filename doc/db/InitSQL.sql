@@ -6,6 +6,7 @@ CREATE TABLE product (
 	name		 VARCHAR(512) NOT NULL,
 	price		 FLOAT(8) NOT NULL,
 	stock		 INTEGER NOT NULL,
+	type 		 VARCHAR(256) NOT NULL,
 	description	 VARCHAR(512),
 	seller_id BIGINT NOT NULL,
 	PRIMARY KEY(id, version)
@@ -219,7 +220,8 @@ VALUES
 (0, 'admin', 'Admin', 'admin@digitalbubble.com', '000000000', 'Administrator', 
  '+351999999999', 
  '9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043',
- 1, 'Street', 'City', 'State', '1000-100')
+ 1, 'Street', 'City', 'State', '1000-100');
  
  INSERT INTO "admin"
+ (id)
  VALUES (0)
