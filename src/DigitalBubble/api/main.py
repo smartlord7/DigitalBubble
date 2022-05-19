@@ -16,14 +16,11 @@ from typing import Union, Tuple, Any
 import jwt
 import flask
 import logging
-from hashlib import sha512
 from functools import wraps
 from flask import request, jsonify
 from hashlib import sha512
 from http import HTTPStatus
-
 import psycopg2
-
 from data.enum.role_enum import Roles
 from data.model.seller import Seller
 from data.model.user import User
@@ -57,6 +54,21 @@ def authorization(f=None, role=None):
 
     return decorator
 
+def get_jwt_data():
+    token = None
+
+    if "HTTP_AUTHORIZATION" in request.environ:
+        token = request.environ["HTTP_AUTHORIZATION"]
+
+    if not token:
+        return None
+    try:
+        token = token.replace("Bearer ", "")
+        data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+
+        return data
+    except:
+        return None
 
 ##########################################################
 # DATABASE ACCESS
@@ -76,7 +88,6 @@ def landing_page():
     <br/>
     """
 
-
 # User registration
 @app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['POST'])
 def register():
@@ -93,6 +104,15 @@ def register():
 
     logger.debug(f'POST /user - payload: {payload}')
 
+    if payload['role'] == Roles['Admin'] or payload['role'] == Roles['Seller']:
+        jwt_data = get_jwt_data()
+
+        if not jwt_data:
+            return jsonify({'error': 'Invalid token'}), HTTPStatus.UNAUTHORIZED
+
+        if jwt_data["role"] != Roles["Admin"]:
+            return jsonify({}), HTTPStatus.UNAUTHORIZED
+
     if payload['role'] == Roles['Seller']:
         u = Seller()
     else:
@@ -104,16 +124,15 @@ def register():
     password_hash = sha512(payload['password'].encode()).hexdigest()
     conn = get_connection()
     cur = conn.cursor()
-    statement_user = 'INSERT INTO "user" (user_name, first_name, email, tin, last_name, phone_number, password_hash, \
-        house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id'
-    values_user = (u.user_name, u.first_name, u.email, u.tin, u.last_name,
+    statement_user = 'INSERT INTO "user" (user_name, first_name, email, tin, role, last_name, phone_number, password_hash, \
+        house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id'
+    values_user = (u.user_name, u.first_name, u.email, u.tin, u.role, u.last_name,
                    u.phone_number, password_hash, u.house_no, u.street_name,
                    u.city, u.state, u.zip_code)
 
     try:
         cur.execute(statement_user, values_user)
         insert_id = cur.fetchone()
-
         if payload['role'] == Roles['Admin']:
             statement = 'INSERT INTO admin (user_id) VALUES (%s)'
             values = insert_id
@@ -159,7 +178,7 @@ def login():
 
     user_name = payload['user_name']
 
-    cur.execute('SELECT password_hash '
+    cur.execute('SELECT id, role, password_hash '
                 'FROM "user"'
                 'WHERE user_name = %s', (user_name,))
 
@@ -168,12 +187,14 @@ def login():
     if len(rows) == 0:
         error = f'User {user_name} not found'
         logger.error(f'PUT /user/ - error: {error}')
-        response = {'status': HTTPStatus.BAD_REQUEST, 'errors': str(error)}
+
+        return flask.jsonify({'error': str(error)}), HTTPStatus.BAD_REQUEST
     else:
         user = rows[0]
         password = payload['password']
         password_hash = sha512(password.encode()).hexdigest()
-        password_hash2 = user[0]
+        role = user[0]
+        password_hash2 = user[1]
 
         if password_hash != password_hash2:
             error = f'Wrong password'
@@ -181,17 +202,20 @@ def login():
             response = {'status': HTTPStatus.BAD_REQUEST, 'errors': str(error)}
         else:
             token = jwt.encode(
-                payload=payload,
+                payload={
+                    "id": id,
+                    "user_name": user_name,
+                    "role": role
+                },
                 key=app.config['SECRET_KEY'],
                 algorithm='HS256',
             )
 
             response = {
-                'status': HTTPStatus.OK,
-                'results': token
+                'result': token
             }
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), HTTPStatus.OK
 
 
 # Create new product
