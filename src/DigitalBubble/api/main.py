@@ -62,7 +62,7 @@ def authorization(f=None, roles=None):
     return decorator
 
 
-def get_jwt_data():
+def get_session():
     token = None
 
     if "HTTP_AUTHORIZATION" in request.environ:
@@ -113,12 +113,12 @@ def register():
     logger.debug(f'POST /user - payload: {payload}')
 
     if payload['role'] == Roles['Admin'] or payload['role'] == Roles['Seller']:
-        jwt_data = get_jwt_data()
+        session = get_session()
 
-        if not jwt_data:
+        if not session:
             return jsonify({'error': 'Invalid token'}), HTTPStatus.UNAUTHORIZED
 
-        if jwt_data["role"] != Roles["Admin"]:
+        if session["role"] != Roles["Admin"]:
             return jsonify({}), HTTPStatus.UNAUTHORIZED
 
     if payload['role'] == Roles['Seller']:
@@ -201,8 +201,9 @@ def login():
         user = rows[0]
         password = payload['password']
         password_hash = sha512(password.encode()).hexdigest()
-        role = user[0]
-        password_hash2 = user[1]
+        user_id = user[0]
+        role = user[1]
+        password_hash2 = user[2]
 
         if password_hash != password_hash2:
             error = f'Wrong password'
@@ -213,7 +214,7 @@ def login():
         else:
             token = jwt.encode(
                 payload={
-                    "id": id,
+                    "id": user_id,
                     "user_name": user_name,
                     "role": role
                 },
@@ -247,37 +248,42 @@ def create_product():
 
     logger.debug(f'POST /product - payload: {payload}')
 
-    jwt_data = get_jwt_data()
-    if not jwt_data:
-        return jsonify({'error': 'Invalid token'}), HTTPStatus.UNAUTHORIZED
-
-    if jwt_data["role"] != Roles["Seller"]:
-        return jsonify({}), HTTPStatus.UNAUTHORIZED
-
-    if payload['product_type'] == Product_type['Computer']:
+    if payload['type'] == Product_type['Computer']:
         p = Computer()
-    elif payload['product_type'] == Product_type['Television']:
+    elif payload['type'] == Product_type['Television']:
         p = Television()
-    elif payload['product_type'] == Product_type['Smartphone']:
+    elif payload['type'] == Product_type['Smartphone']:
         p = Smartphone()
+    else:
+        p = Product()
 
     error_response = p.bind_json(payload)
     if error_response:
         return error_response, HTTPStatus.BAD_REQUEST
 
-    seller_id = jwt_data['id']
+    session = get_session()
+    seller_id = session['id']
 
-    statement_product = 'INSERT INTO product (name, price, stock, description, type, seller_id, version) \
-        VALUES(%s, %s, %s, %s, %s, %s) returning id'
-    values_product = (p.name, p.price, p.stock, p.description, p.type, seller_id, '1')
+    query_max_product_id = 'SELECT MAX(id) FROM product'
+    cur.execute(query_max_product_id)
+    max_product_id = cur.fetchone()[0]
+
+    if not max_product_id:
+        max_product_id = 1
+
+    statement_product = 'INSERT INTO product (id, name, price, stock, description, category, seller_id, version) \
+        VALUES(%s, %s, %s, %s, %s, %s, %s, %s) returning id'
+    values_product = (max_product_id, p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
 
     try:
         cur.execute(statement_product, values_product)
         insert_id = cur.fetchone()
-        if payload['product_type'] == Product_type['Computer']:
+        type_product = payload['type']
+
+        if type_product == Product_type['Computer']:
             statement = 'INSERT INTO computer (cpu, gpu, product_id) VALUES (%s, %s, %s)'
             values = (p.cpu, p.gpu, insert_id)
-        elif payload['product_type'] == Roles['Smartphone']:
+        elif type_product == Roles['Smartphone']:
             statement = 'INSERT INTO smartphone (model, operative_system, product_id) VALUES (%s, %s, %s)'
             values = (p.model, p.operative_system, insert_id)
         else:
@@ -291,8 +297,8 @@ def create_product():
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
-        response = {'status': HTTPStatus.INTERNAL_SERVER_ERROR,
-                    'error': str(error)}
+        response = {'error': str(error)}
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
 
@@ -300,7 +306,7 @@ def create_product():
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), status
 
 
 @authorization(roles=[Roles["Seller"]])

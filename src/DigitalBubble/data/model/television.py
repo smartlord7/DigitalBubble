@@ -7,15 +7,14 @@ class Television(Product):
         self.size = None
         self.technology = None
 
-        self.fields = {
-            "size":
-                {
+        self.fields["size"] = \
+            {
                 "required": True,
                 "type": int
-                },
-            "technology":
-                {
-                    "required": True,
-                    "type": str
-                },
-        }
+            }
+
+        self.fields["technology"] = \
+            {
+                "required": True,
+                "type": int
+            }

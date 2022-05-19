@@ -7,15 +7,14 @@ class Smartphone(Product):
         self.model = None
         self.operative_system = None
 
-        self.fields = {
-            "model":
-                {
+        self.fields["model"] = \
+            {
                 "required": True,
-                "type": str
-                },
-            "operative_system":
-                {
-                    "required": True,
-                    "type": str
-                },
-        }
+                "type": int
+            }
+
+        self.fields["operating_system"] = \
+            {
+                "required": True,
+                "type": int
+            }

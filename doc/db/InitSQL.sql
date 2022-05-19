@@ -6,7 +6,7 @@ CREATE TABLE product (
 	name		 VARCHAR(512) NOT NULL,
 	price		 FLOAT(8) NOT NULL,
 	stock		 INTEGER NOT NULL,
-	type 		 VARCHAR(256) NOT NULL,
+	category 		 VARCHAR(256) NOT NULL,
 	description	 VARCHAR(512),
 	seller_id BIGINT NOT NULL,
 	PRIMARY KEY(id, version)
@@ -180,7 +180,7 @@ CREATE INDEX ProductName ON product(name);
 
 CREATE INDEX ProductPrice ON product(price);
 
-CREATE INDEX ProductType ON product(type);
+CREATE INDEX ProductType ON product(category);
 
 CREATE INDEX SellerCompanyName ON seller(company_name);
 

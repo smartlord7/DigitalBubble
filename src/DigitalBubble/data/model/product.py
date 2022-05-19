@@ -7,6 +7,7 @@ class Product(BaseModel):
         self.name = None
         self.price = None
         self.stock = None
+        self.category = None
         self.type = None
         self.description = None
 
@@ -21,10 +22,20 @@ class Product(BaseModel):
                     "required": True,
                     "type": float
                 },
-            "type":
+            "stock":
+                {
+                    "required": True,
+                    "type": int
+                },
+            "category":
                 {
                     "required": True,
                     "type": str
+                },
+            "type":
+                {
+                    "required": True,
+                    "type": int
                 },
             "description":
                 {
