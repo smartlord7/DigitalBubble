@@ -122,6 +122,7 @@ CREATE TABLE item_order (
 ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id) REFERENCES seller(user_id);
 ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
+-- ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE comment ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE comment ADD CONSTRAINT comment_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
 ALTER TABLE comment ADD CONSTRAINT comment_fk4 FOREIGN KEY (notification_id) REFERENCES notification(id);
