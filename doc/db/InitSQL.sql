@@ -202,10 +202,48 @@ CREATE UNIQUE INDEX UserPhoneNumber ON "user"(phone_number);
 
 -- Triggers
 
+CREATE OR REPLACE TRIGGER OnInsertOrder
+AFTER UPDATE ON "order"
+FOR EACH ROW
+WHEN (NEW.is_complete = '1')
+EXECUTE FUNCTION OnInsertOrder()
 
--- Stored Procedures
+-- Stored Procedures/Functions
 
+CREATE OR REPLACE FUNCTION OnInsertOrder() RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	seller_id_ BIGINT;
+	buyer_name VARCHAR;
+	product_name VARCHAR;
+	order_items CURSOR FOR
+	SELECT product_id, quantity
+	FROM item
+	WHERE order_id = new.id;
+BEGIN
+	SELECT user_name
+	FROM "user"
+	WHERE id = NEW.buyer_id
+	INTO buyer_name;
 
+	FOR product IN order_items LOOP
+		SELECT name, seller_id
+		FROM product
+		WHERE id = product.product_id
+		INTO product_name, seller_id_;
+		
+		INSERT INTO notification
+		(title, description, user_id)
+		VALUES
+		(FORMAT('Sold %s', product_name),
+		FORMAT('%s units of product %s were bought by %s', product.quantity, product_name, buyer_name),
+		seller_id_);
+	END LOOP;
+	
+	RETURN NEW;
+END;
+$$
 
 
 -- DML
