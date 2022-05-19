@@ -16,8 +16,7 @@ CREATE TABLE computer (
 	cpu		 VARCHAR(512) NOT NULL,
 	gpu		 VARCHAR(512),
 	product_id	 BIGINT,
-	product_version BIGINT,
-	PRIMARY KEY(product_id, product_version)
+	PRIMARY KEY(product_id)
 );
 
 CREATE TABLE "user" (
@@ -41,16 +40,14 @@ CREATE TABLE television (
 	size		 INTEGER NOT NULL,
 	technology	 VARCHAR(512) NOT NULL,
 	product_id	 BIGINT,
-	product_version BIGINT,
-	PRIMARY KEY(product_id, product_version)
+	PRIMARY KEY(product_id)
 );
 
 CREATE TABLE smartphone (
 	model		 VARCHAR(512) NOT NULL,
 	operative_system VARCHAR(512) NOT NULL,
 	product_id	 BIGINT,
-	product_version BIGINT,
-	PRIMARY KEY(product_id, product_version)
+	PRIMARY KEY(product_id)
 );
 
 CREATE TABLE notification (
@@ -102,8 +99,7 @@ CREATE TABLE classification (
 	comment	 VARCHAR(512),
 	buyer_id	 BIGINT,
 	product_id	 BIGINT,
-	product_version BIGINT,
-	PRIMARY KEY(buyer_id, product_id, product_version)
+	PRIMARY KEY(buyer_id, product_id)
 );
 
 CREATE TABLE admin (
@@ -120,17 +116,17 @@ CREATE TABLE item_order (
 -- Constraints
 
 ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id) REFERENCES seller(user_id);
-ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
-ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
-ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
+ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id);
+ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
+ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
 ALTER TABLE comment ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
-ALTER TABLE comment ADD CONSTRAINT comment_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
+ALTER TABLE comment ADD CONSTRAINT comment_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id);
 ALTER TABLE comment ADD CONSTRAINT comment_fk4 FOREIGN KEY (notification_id) REFERENCES notification(id);
 ALTER TABLE item ADD CONSTRAINT item_fk1 FOREIGN KEY (notification_id) REFERENCES notification(id);
 ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE "order" ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id, version);
+ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
 ALTER TABLE classification ADD CONSTRAINT classification_fk4 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
 ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
 ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);

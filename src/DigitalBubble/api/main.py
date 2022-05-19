@@ -32,27 +32,29 @@ app.config['API_PREFIX'] = 'digitalbubble'
 logger = None
 
 
-def authorization(f=None, role=None):
+def authorization(f=None, roles=None):
     @wraps(f)
     def decorator(*args, **kwargs):
         if not request:
             return None
         token = None
-        if 'x-access-tokens' in request.headers:
-            token = request.headers['x-access-tokens']
+        if "HTTP_AUTHORIZATION" in request.environ:
+            token = request.environ["HTTP_AUTHORIZATION"]
 
         if not token:
-            return jsonify({'message': 'a valid token is missing'})
+            return jsonify({'message': 'a valid token is missing'}), HTTPStatus.UNAUTHORIZED
         try:
             data = jwt.decode(
                 token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = None
+            if roles != 'all' and data['role'] not in roles:
+                return jsonify({}), HTTPStatus.UNAUTHORIZED
         except:
-            return jsonify({'message': 'token is invalid'})
+            return jsonify({'message': 'token is invalid'}), HTTPStatus.UNAUTHORIZED
 
-        return f(current_user, *args, **kwargs)
+        return f(data, *args, **kwargs)
 
     return decorator
+
 
 def get_jwt_data():
     token = None
@@ -75,7 +77,7 @@ def get_jwt_data():
 ##########################################################
 
 
-@authorization(role="Admin")
+@authorization(roles="Admin")
 @app.route(f'/{app.config["API_PREFIX"]}')
 def landing_page():
     return """
@@ -199,7 +201,9 @@ def login():
         if password_hash != password_hash2:
             error = f'Wrong password'
             logger.error(f'PUT /user/ - error: {error}')
-            response = {'status': HTTPStatus.BAD_REQUEST, 'errors': str(error)}
+            response = {'error': str(error)}
+
+            return flask.jsonify(response), HTTPStatus.BAD_REQUEST
         else:
             token = jwt.encode(
                 payload={
@@ -218,7 +222,7 @@ def login():
     return flask.jsonify(response), HTTPStatus.OK
 
 
-# Create new product
+@authorization(roles=[Roles["Seller"]])
 @app.route(f'/{app.config["API_PREFIX"]}/product/', methods=['POST'])
 def create_product():
     """Function that creates a new product
@@ -241,7 +245,7 @@ def create_product():
         return flask.jsonify(response)
 
 
-# Update a product
+@authorization(roles=[Roles["Seller"]])
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['PUT'])
 def update_product(product_id):
     """Function that updates an existing product
@@ -254,13 +258,10 @@ def update_product(product_id):
     """
 
     logger.info('PUT /product/<product_id>')
-
     logger.debug(f'product_id: {product_id}')
-
     payload = flask.request.get_json()
 
-    conn = get_connection()
-    cur = conn.cursor()
+    cur = get_connection().cursor()
 
     logger.debug(f'PUT /product/<product_id> - payload: {payload}')
 
@@ -270,24 +271,31 @@ def update_product(product_id):
         return flask.jsonify(response)
 
 
-# Buy a product
+@authorization(roles=[Roles["Buyer"]])
 @app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
-def buy_product():
+def place_order():
     logger.info('POST /order')
     payload = flask.request.get_json()
 
     conn = get_connection()
     cur = conn.cursor()
-
     logger.debug(f'POST /order - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    cart = payload['cart']
+    item_list = list()
+    for item in cart:
+        product_id = item[0]
+        product_quantity = item[1]
 
 
-# Rate a product
+
+
+
+
+    return flask.jsonify({})
+
+
+@authorization(roles=[Roles["Buyer"]])
 @app.route(f'/{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
 def rate_product(product_id):
     """Function that rates a product with a rating(0-5) and a comment.
@@ -316,9 +324,9 @@ def rate_product(product_id):
         return flask.jsonify(response)
 
 
-# Create a comment
-@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>', methods=['POST'])
-def create_comment(product_id):
+@authorization(roles="all")
+@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_comment_id>', methods=['POST'])
+def create_comment(product_id, parent_comment_id):
     """Function that creates a comment.
 
     Args:
@@ -330,7 +338,7 @@ def create_comment(product_id):
 
     logger.info('POST /questions/<product_id>')
 
-    logger.debug(f'product_id: {product_id}')
+    logger.debug(f'product_id: {product_id}, parent_comment_id: {parent_comment_id}')
 
     payload = flask.request.get_json()
 
@@ -345,38 +353,7 @@ def create_comment(product_id):
         return flask.jsonify(response)
 
 
-# Rply a comment
-@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_question_id>', methods=['POST'])
-def reply_comment(product_id, parent_question_id):
-    """Function that replies to a comment.
-
-    Args:
-        product_id (int): id of the product you want to reply
-
-    Returns:
-        _type_: _description_
-    """
-
-    logger.info('POST /questions/<product_id>/<parent_question_id>')
-
-    logger.debug(
-        f'product_id: {product_id}, parent_question_id: {parent_question_id}')
-
-    payload = flask.request.get_json()
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    logger.debug(
-        f'POST /questions/<product_id>/<parent_question_id> - payload: {payload}')
-
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
-
-
-# Get information of a product
+@authorization(roles="all")
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
 def get_product(product_id):
     """Function that gets the information of a product.
@@ -399,10 +376,7 @@ def get_product(product_id):
 
     logger.debug(f'GET /product/<product_id> - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    return flask.jsonify({})
 
 
 # Get statistics of the last 12 months
@@ -426,10 +400,7 @@ def get_product_stats():
 
     logger.debug(f'GET /report/year - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    return flask.jsonify({})
 
 
 if __name__ == "__main__":
