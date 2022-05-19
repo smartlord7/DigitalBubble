@@ -21,9 +21,15 @@ from flask import request, jsonify
 from hashlib import sha512
 from http import HTTPStatus
 import psycopg2
+
 from data.enum.role_enum import Roles
+from data.enum.product_enum import Product_type
 from data.model.seller import Seller
 from data.model.user import User
+from data.model.computer import Computer
+from data.model.smartphone import Smartphone
+from data.model.television import Television
+from data.model.product import Product
 from db.util import get_connection
 
 app = flask.Flask(__name__)
@@ -142,7 +148,7 @@ def register():
             statement = 'INSERT INTO seller (user_id, company_name) VALUES (%s, %s)'
             values = (insert_id, u.company_name)
         else:
-            statement = f'INSERT INTO buyer (user_id) VALUES (%s)'
+            statement = 'INSERT INTO buyer (user_id) VALUES (%s)'
             values = insert_id
 
         response['result'] = insert_id
@@ -233,16 +239,68 @@ def create_product():
 
     logger.info('POST /product')
     payload = flask.request.get_json()
+    status = HTTPStatus.OK
+    response = dict()
 
     conn = get_connection()
     cur = conn.cursor()
 
     logger.debug(f'POST /product - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    jwt_data = get_jwt_data()
+    if not jwt_data:
+        return jsonify({'error': 'Invalid token'}), HTTPStatus.UNAUTHORIZED
+
+    if jwt_data["role"] != Roles["Seller"]:
+        return jsonify({}), HTTPStatus.UNAUTHORIZED
+
+    if payload['product_type'] == Product_type['Computer']:
+        p = Computer()
+    elif payload['product_type'] == Product_type['Television']:
+        p = Television()
+    elif payload['product_type'] == Product_type['Smartphone']:
+        p = Smartphone()
+
+    error_response = p.bind_json(payload)
+    if error_response:
+        return error_response, HTTPStatus.BAD_REQUEST
+
+    seller_id = jwt_data['id']
+
+    statement_product = 'INSERT INTO product (name, price, stock, description, type, seller_id, version) \
+        VALUES(%s, %s, %s, %s, %s, %s) returning id'
+    values_product = (p.name, p.price, p.stock, p.description, p.type, seller_id, '1')
+
+    try:
+        cur.execute(statement_product, values_product)
+        insert_id = cur.fetchone()
+        if payload['product_type'] == Product_type['Computer']:
+            statement = 'INSERT INTO computer (cpu, gpu, product_id) VALUES (%s, %s, %s)'
+            values = (p.cpu, p.gpu, insert_id)
+        elif payload['product_type'] == Roles['Smartphone']:
+            statement = 'INSERT INTO smartphone (model, operative_system, product_id) VALUES (%s, %s, %s)'
+            values = (p.model, p.operative_system, insert_id)
+        else:
+            statement = 'INSERT INTO television (size, technology, product_id) VALUES (%s, %s, %s)'
+            values = (p.size, p.technology, insert_id)
+
+        response['result'] = insert_id
+
+        cur.execute(statement, values)
+        conn.commit()
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
+        response = {'status': HTTPStatus.INTERNAL_SERVER_ERROR,
+                    'error': str(error)}
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return flask.jsonify(response)
 
 
 @authorization(roles=[Roles["Seller"]])
