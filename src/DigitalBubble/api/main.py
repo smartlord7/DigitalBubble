@@ -318,16 +318,41 @@ def update_product(product_id):
     logger.info('PUT /product/<product_id>')
     logger.debug(f'product_id: {product_id}')
     payload = flask.request.get_json()
-
+    response = dict()
+    status = HTTPStatus.OK
+    session = get_session()
     conn = get_connection()
     cur = conn.cursor()
 
-    logger.debug(f'PUT /product/<product_id> - payload: {payload}')
+    user_id = session['id']
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    try:
+        product_statement = 'SELECT seller_id ' \
+                            'FROM product ' \
+                            'WHERE id = %s'
+        values = (product_id, )
+
+        cur.execute(product_statement, values)
+        seller_id = cur.fetchone()[0]
+
+        if seller_id is None:
+            return flask.jsonify({}), HTTPStatus.NOT_FOUND
+
+        if seller_id != user_id:
+            return flask.jsonify({}), HTTPStatus.UNAUTHORIZED
+
+        product_statement = ''
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
+        response = {'error': str(error)}
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return flask.jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
