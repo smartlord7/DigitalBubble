@@ -9,5 +9,6 @@ def get_connection():
         port='5432',
         database='DigitalBubble',
     )
+    conn.set_session(autocommit=False)
 
     return conn
