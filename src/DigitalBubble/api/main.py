@@ -10,8 +10,6 @@
 # Authors:
 # André Colaço       <andrecolaco@student.dei.uc.pt>
 # Sancho Simoes      <sanchosimoes@student.dei.uc.pt>
-# Rodrigo Machado    <ramachado@student.dei.uc.pt>
-from typing import Union, Tuple, Any
 
 import jwt
 import flask
@@ -21,7 +19,6 @@ from flask import request, jsonify
 from hashlib import sha512
 from http import HTTPStatus
 import psycopg2
-
 from data.enum.role_enum import Roles
 from data.enum.product_enum import Product_type
 from data.model.seller import Seller
@@ -38,28 +35,30 @@ app.config['API_PREFIX'] = 'digitalbubble'
 logger = None
 
 
-def authorization(f=None, roles=None):
-    @wraps(f)
-    def decorator(*args, **kwargs):
-        if not request:
-            return None
-        token = None
-        if "HTTP_AUTHORIZATION" in request.environ:
-            token = request.environ["HTTP_AUTHORIZATION"]
+def authorization(roles):
+    def authorization_(f):
+        @wraps(f)
+        def decorator(*args, **kwargs):
+            if not request:
+                return None
+            token = None
+            if "HTTP_AUTHORIZATION" in request.environ:
+                token = request.environ["HTTP_AUTHORIZATION"].replace("Bearer ", "")
 
-        if not token:
-            return jsonify({'message': 'a valid token is missing'}), HTTPStatus.UNAUTHORIZED
-        try:
-            data = jwt.decode(
-                token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            if roles != 'all' and data['role'] not in roles:
-                return jsonify({}), HTTPStatus.UNAUTHORIZED
-        except:
-            return jsonify({'message': 'token is invalid'}), HTTPStatus.UNAUTHORIZED
+            if not token:
+                return jsonify({'error': 'a valid token is missing'}), HTTPStatus.UNAUTHORIZED
+            try:
+                data = jwt.decode(
+                    token, app.config['SECRET_KEY'], algorithms=["HS256"])
+                if roles != 'all' and data['role'] not in roles:
+                    return jsonify({}), HTTPStatus.UNAUTHORIZED
+            except:
+                return jsonify({'error': 'token is invalid'}), HTTPStatus.UNAUTHORIZED
 
-        return f(data, *args, **kwargs)
+            return f(data, *args, **kwargs)
 
-    return decorator
+        return decorator
+    return authorization_
 
 
 def get_session():
@@ -78,12 +77,7 @@ def get_session():
     except:
         return None
 
-##########################################################
-# DATABASE ACCESS
-##########################################################
 
-
-@authorization(roles="Admin")
 @app.route(f'/{app.config["API_PREFIX"]}')
 def landing_page():
     return """
@@ -96,7 +90,7 @@ def landing_page():
     <br/>
     """
 
-# User registration
+
 @app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['POST'])
 def register():
     """Function that register new users
@@ -170,7 +164,6 @@ def register():
     return flask.jsonify(response), status
 
 
-# User authentication
 @app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['PUT'])
 def login():
     """Function that a user login with his username and password
@@ -229,8 +222,8 @@ def login():
     return flask.jsonify(response), HTTPStatus.OK
 
 
-@authorization(roles=[Roles["Seller"]])
 @app.route(f'/{app.config["API_PREFIX"]}/product/', methods=['POST'])
+@authorization(roles=[Roles["Seller"]])
 def create_product():
     """Function that creates a new product
 
@@ -309,8 +302,8 @@ def create_product():
     return flask.jsonify(response), status
 
 
-@authorization(roles=[Roles["Seller"]])
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['PUT'])
+@authorization(roles=[Roles["Seller"]])
 def update_product(product_id):
     """Function that updates an existing product
 
@@ -335,32 +328,8 @@ def update_product(product_id):
         return flask.jsonify(response)
 
 
-@authorization(roles=[Roles["Buyer"]])
-@app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
-def place_order():
-    logger.info('POST /order')
-    payload = flask.request.get_json()
-
-    conn = get_connection()
-    cur = conn.cursor()
-    logger.debug(f'POST /order - payload: {payload}')
-
-    cart = payload['cart']
-    item_list = list()
-    for item in cart:
-        product_id = item[0]
-        product_quantity = item[1]
-
-
-
-
-
-
-    return flask.jsonify({})
-
-
-@authorization(roles=[Roles["Buyer"]])
 @app.route(f'/{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
+@authorization(roles=[Roles["Buyer"]])
 def rate_product(product_id):
     """Function that rates a product with a rating(0-5) and a comment.
 
@@ -388,8 +357,27 @@ def rate_product(product_id):
         return flask.jsonify(response)
 
 
-@authorization(roles="all")
+@app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
+@authorization(roles=[Roles["Buyer"]])
+def place_order():
+    logger.info('POST /order')
+    payload = flask.request.get_json()
+
+    conn = get_connection()
+    cur = conn.cursor()
+    logger.debug(f'POST /order - payload: {payload}')
+
+    cart = payload['cart']
+    item_list = list()
+    for item in cart:
+        product_id = item[0]
+        product_quantity = item[1]
+
+    return flask.jsonify({})
+
+
 @app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_comment_id>', methods=['POST'])
+@authorization(roles="all")
 def create_comment(product_id, parent_comment_id):
     """Function that creates a comment.
 
@@ -417,8 +405,8 @@ def create_comment(product_id, parent_comment_id):
         return flask.jsonify(response)
 
 
-@authorization(roles="all")
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
+@authorization(roles="all")
 def get_product(product_id):
     """Function that gets the information of a product.
 
@@ -443,8 +431,8 @@ def get_product(product_id):
     return flask.jsonify({})
 
 
-# Get statistics of the last 12 months
 @app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
+@authorization(roles=Roles["Admin"])
 def get_product_stats():
     """Function that gets the statistics of a product.
 
