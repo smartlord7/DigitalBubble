@@ -318,7 +318,8 @@ def update_product(product_id):
     logger.debug(f'product_id: {product_id}')
     payload = flask.request.get_json()
 
-    cur = get_connection().cursor()
+    conn = get_connection()
+    cur = conn.cursor()
 
     logger.debug(f'PUT /product/<product_id> - payload: {payload}')
 
