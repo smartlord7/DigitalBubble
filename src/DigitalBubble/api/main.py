@@ -21,8 +21,11 @@ from flask import request, jsonify
 from hashlib import sha512
 from http import HTTPStatus
 
-from data.enum.status_code_enum import StatusCodes
+import psycopg2
+
+from data.enum.role_enum import Roles
 from db.util import get_connection
+
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
@@ -90,17 +93,56 @@ def register():
     logger.debug(f'POST /user - payload: {payload}')
 
     if 'username' and 'email' and 'password' and 'first_name' and 'last_name' and 'tin' and 'phone_number' \
-        and 'house_no' and 'street_name' and 'city' and 'state' and 'zip_code' not in payload:
-        
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+            and 'house_no' and 'street_name' and 'city' and 'state' and 'zip_code' and 'role' not in payload:
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
     password_hash = sha512(payload['password'].encode()).hexdigest()
 
-    statement = 'INSERT INTO user (username, first_name, email, tin, last_name, phone_number, password_hash, \
-        house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
-    values = (payload['username'], payload['first_name'], payload['email'], payload['tin'], payload['last_name'], 
-    payload['phone_number'], password_hash, payload['username'], payload['username'])
+    statement_user = 'INSERT INTO user (username, first_name, email, tin, last_name, phone_number, password_hash, \
+        house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id'
+    values_user = (payload['username'], payload['first_name'], payload['email'], payload['tin'], payload['last_name'], payload['phone_number'],
+                   password_hash, payload['house_no'], payload['street_name'], payload['city'], payload['state'], payload['zid_code'])
+
+    try:
+        cur.execute(statement_user, values_user)
+        insert_id = cur.fetchone()
+
+        if (payload['role'] == Roles['Admin']):
+            statement = 'INSERT INTO admin (user_id) VALUES (%s)'
+            values = (insert_id)
+        elif (payload['role'] == Roles['Seller']):
+            if 'company_name' not in payload:
+                response = {'status': HTTPStatus.BAD_REQUEST,
+                            'results': 'invalid input in payload'}
+                return flask.jsonify(response)
+            statement = 'INSERT INTO seller (user_id, company_name) VALUES (%s, %s)'
+            values = (insert_id, payload['company_name'])
+        elif (payload['role'] == Roles['Buyer']):
+            statement = f'INSERT INTO buyer (user_id) VALUES (%s)'
+            values = (insert_id)
+        else:
+            response = {'status': HTTPStatus.BAD_REQUEST,
+                        'results': 'invalid input in payload'}
+            return flask.jsonify(response)
+
+        cur.execute(statement, values)
+
+        conn.commit()
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
+        response = {'status': HTTPStatus.INTERNAL_SERVER_ERROR,
+                    'error': str(error)}
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return flask.jsonify(response)
 
 
 # User authentication
@@ -128,7 +170,7 @@ def login():
     if len(rows) == 0:
         error = f'User {user_name} not found'
         logger.error(f'PUT /user/ - error: {error}')
-        response = {'status': StatusCodes['api_error'], 'errors': str(error)}
+        response = {'status': HTTPStatus.BAD_REQUEST, 'errors': str(error)}
     else:
         user = rows[0]
         password = payload['password']
@@ -172,7 +214,8 @@ def create_product():
     logger.debug(f'POST /product - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -200,7 +243,8 @@ def update_product(product_id):
     logger.debug(f'PUT /product/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -216,7 +260,8 @@ def buy_product():
     logger.debug(f'POST /order - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -244,7 +289,8 @@ def rate_product(product_id):
     logger.debug(f'POST /rantiing/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -272,7 +318,8 @@ def create_comment(product_id):
     logger.debug(f'POST /questions/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -290,17 +337,20 @@ def reply_comment(product_id, parent_question_id):
 
     logger.info('POST /questions/<product_id>/<parent_question_id>')
 
-    logger.debug(f'product_id: {product_id}, parent_question_id: {parent_question_id}')
+    logger.debug(
+        f'product_id: {product_id}, parent_question_id: {parent_question_id}')
 
     payload = flask.request.get_json()
 
     conn = get_connection()
     cur = conn.cursor()
 
-    logger.debug(f'POST /questions/<product_id>/<parent_question_id> - payload: {payload}')
+    logger.debug(
+        f'POST /questions/<product_id>/<parent_question_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -328,7 +378,8 @@ def get_product(product_id):
     logger.debug(f'GET /product/<product_id> - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -354,7 +405,8 @@ def get_product_stats():
     logger.debug(f'GET /report/year - payload: {payload}')
 
     if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
+        response = {'status': HTTPStatus.BAD_REQUEST,
+                    'results': 'invalid input in payload'}
         return flask.jsonify(response)
 
 
@@ -374,5 +426,5 @@ if __name__ == "__main__":
 
     host = '127.0.0.1'
     port = 8080
+    logger.info(f'API v1 online: http://{host}:{port}//{app.config["API_PREFIX"]}')
     app.run(host=host, debug=True, threaded=True, port=port)
-    logger.info(f'API v1 online: http://{host}:{port}')
