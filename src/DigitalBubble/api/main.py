@@ -15,6 +15,7 @@
 import jwt
 import flask
 import logging
+from hashlib import sha512
 from functools import wraps
 from flask import request, jsonify
 from hashlib import sha512
@@ -26,11 +27,14 @@ from db.util import get_connection
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
 app.config['API_PREFIX'] = 'digitalbubble'
+logger = None
 
 
 def authorization(f=None, role=None):
     @wraps(f)
     def decorator(*args, **kwargs):
+        if not request:
+            return None
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
@@ -55,7 +59,7 @@ def authorization(f=None, role=None):
 
 
 @authorization(role="Admin")
-@app.route(f'{app.config["API_PREFIX"]}/')
+@app.route(f'/{app.config["API_PREFIX"]}')
 def landing_page():
     return """
 
@@ -69,7 +73,7 @@ def landing_page():
 
 
 # User registration
-@app.route(f'{app.config["API_PREFIX"]}/user/', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['POST'])
 def register():
     """Function that register new users
 
@@ -98,8 +102,9 @@ def register():
     values = (payload['username'], payload['first_name'], payload['email'], payload['tin'], payload['last_name'], 
     payload['phone_number'], password_hash, payload['username'], payload['username'])
 
-# User autentication
-@app.route(f'{app.config["API_PREFIX"]}/user/', methods=['PUT'])
+
+# User authentication
+@app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['PUT'])
 def login():
     """Function that a user login with his username and password
 
@@ -108,20 +113,49 @@ def login():
     """
 
     logger.info('PUT /user')
-    payload = flask.request.get_json()
-
     conn = get_connection()
     cur = conn.cursor()
+    payload = flask.request.get_json()
 
-    logger.debug(f'PUT /user - payload: {payload}')
+    user_name = payload['user_name']
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST, 'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    cur.execute('SELECT password_hash '
+                'FROM "user"'
+                'WHERE user_name = %s', (user_name,))
+
+    rows = cur.fetchall()
+
+    if len(rows) == 0:
+        error = f'User {user_name} not found'
+        logger.error(f'PUT /user/ - error: {error}')
+        response = {'status': StatusCodes['api_error'], 'errors': str(error)}
+    else:
+        user = rows[0]
+        password = payload['password']
+        password_hash = sha512(password.encode()).hexdigest()
+        password_hash2 = user[0]
+
+        if password_hash != password_hash2:
+            error = f'Wrong password'
+            logger.error(f'PUT /user/ - error: {error}')
+            response = {'status': HTTPStatus.BAD_REQUEST, 'errors': str(error)}
+        else:
+            token = jwt.encode(
+                payload=payload,
+                key=app.config['SECRET_KEY'],
+                algorithm='HS256',
+            )
+
+            response = {
+                'status': HTTPStatus.OK,
+                'results': token
+            }
+
+    return flask.jsonify(response)
 
 
 # Create new product
-@app.route(f'{app.config["API_PREFIX"]}/product/', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/product/', methods=['POST'])
 def create_product():
     """Function that creates a new product
 
@@ -143,7 +177,7 @@ def create_product():
 
 
 # Update a product
-@app.route(f'{app.config["API_PREFIX"]}/product/<product_id>', methods=['PUT'])
+@app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['PUT'])
 def update_product(product_id):
     """Function that updates an existing product
 
@@ -171,7 +205,7 @@ def update_product(product_id):
 
 
 # Buy a product
-@app.route(f'{app.config["API_PREFIX"]}/order/', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
 def buy_product():
     logger.info('POST /order')
     payload = flask.request.get_json()
@@ -187,7 +221,7 @@ def buy_product():
 
 
 # Rate a product
-@app.route(f'{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
 def rate_product(product_id):
     """Function that rates a product with a rating(0-5) and a comment.
 
@@ -215,7 +249,7 @@ def rate_product(product_id):
 
 
 # Create a comment
-@app.route(f'{app.config["API_PREFIX"]}/questions/<product_id>', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>', methods=['POST'])
 def create_comment(product_id):
     """Function that creates a comment.
 
@@ -243,9 +277,9 @@ def create_comment(product_id):
 
 
 # Rply a comment
-@app.route(f'{app.config["API_PREFIX"]}/questions/<product_id>/<parent_question_id>', methods=['POST'])
+@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_question_id>', methods=['POST'])
 def reply_comment(product_id, parent_question_id):
-    """Function that replies a comment.
+    """Function that replies to a comment.
 
     Args:
         product_id (int): id of the product you want to reply
@@ -271,8 +305,8 @@ def reply_comment(product_id, parent_question_id):
 
 
 # Get information of a product
-@app.route(f'{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
-def get_product_information(product_id):
+@app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
+def get_product(product_id):
     """Function that gets the information of a product.
 
     Args:
@@ -299,8 +333,8 @@ def get_product_information(product_id):
 
 
 # Get statistics of the last 12 months
-@app.route(f'{app.config["API_PREFIX"]}/report/year', methods=['GET'])
-def get_product_statistics():
+@app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
+def get_product_stats():
     """Function that gets the statistics of a product.
 
     Args:
