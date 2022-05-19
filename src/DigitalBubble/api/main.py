@@ -11,6 +11,7 @@
 # André Colaço       <andrecolaco@student.dei.uc.pt>
 # Sancho Simoes      <sanchosimoes@student.dei.uc.pt>
 # Rodrigo Machado    <ramachado@student.dei.uc.pt>
+from typing import Union, Tuple, Any
 
 import jwt
 import flask
@@ -24,8 +25,9 @@ from http import HTTPStatus
 import psycopg2
 
 from data.enum.role_enum import Roles
+from data.model.seller import Seller
+from data.model.user import User
 from db.util import get_connection
-
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
@@ -86,55 +88,51 @@ def register():
 
     logger.info('POST /user')
     payload = flask.request.get_json()
-
-    conn = get_connection()
-    cur = conn.cursor()
+    status = HTTPStatus.OK
+    response = dict()
 
     logger.debug(f'POST /user - payload: {payload}')
 
-    if 'username' and 'email' and 'password' and 'first_name' and 'last_name' and 'tin' and 'phone_number' \
-            and 'house_no' and 'street_name' and 'city' and 'state' and 'zip_code' and 'role' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    if payload['role'] == Roles['Seller']:
+        u = Seller()
+    else:
+        u = User()
+    error_response = u.bind_json(payload)
+    if error_response:
+        return error_response, HTTPStatus.BAD_REQUEST
 
     password_hash = sha512(payload['password'].encode()).hexdigest()
-
-    statement_user = 'INSERT INTO user (username, first_name, email, tin, last_name, phone_number, password_hash, \
+    conn = get_connection()
+    cur = conn.cursor()
+    statement_user = 'INSERT INTO "user" (user_name, first_name, email, tin, last_name, phone_number, password_hash, \
         house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id'
-    values_user = (payload['username'], payload['first_name'], payload['email'], payload['tin'], payload['last_name'], payload['phone_number'],
-                   password_hash, payload['house_no'], payload['street_name'], payload['city'], payload['state'], payload['zid_code'])
+    values_user = (u.user_name, u.first_name, u.email, u.tin, u.last_name,
+                   u.phone_number, password_hash, u.house_no, u.street_name,
+                   u.city, u.state, u.zip_code)
 
     try:
         cur.execute(statement_user, values_user)
         insert_id = cur.fetchone()
 
-        if (payload['role'] == Roles['Admin']):
+        if payload['role'] == Roles['Admin']:
             statement = 'INSERT INTO admin (user_id) VALUES (%s)'
-            values = (insert_id)
-        elif (payload['role'] == Roles['Seller']):
-            if 'company_name' not in payload:
-                response = {'status': HTTPStatus.BAD_REQUEST,
-                            'results': 'invalid input in payload'}
-                return flask.jsonify(response)
+            values = insert_id
+        elif payload['role'] == Roles['Seller']:
             statement = 'INSERT INTO seller (user_id, company_name) VALUES (%s, %s)'
-            values = (insert_id, payload['company_name'])
-        elif (payload['role'] == Roles['Buyer']):
-            statement = f'INSERT INTO buyer (user_id) VALUES (%s)'
-            values = (insert_id)
+            values = (insert_id, u.company_name)
         else:
-            response = {'status': HTTPStatus.BAD_REQUEST,
-                        'results': 'invalid input in payload'}
-            return flask.jsonify(response)
+            statement = f'INSERT INTO buyer (user_id) VALUES (%s)'
+            values = insert_id
+
+        response['result'] = insert_id
 
         cur.execute(statement, values)
-
         conn.commit()
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
-        response = {'status': HTTPStatus.INTERNAL_SERVER_ERROR,
-                    'error': str(error)}
+        response = {'error': str(error)}
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
 
@@ -142,7 +140,7 @@ def register():
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), status
 
 
 # User authentication

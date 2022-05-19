@@ -7,7 +7,7 @@ def get_connection():
         password='digitalbubble123#',
         host='127.0.0.1',
         port='5432',
-        database='DigitalBubble'
+        database='DigitalBubble',
     )
 
     return conn
