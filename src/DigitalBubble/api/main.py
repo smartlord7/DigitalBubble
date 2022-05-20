@@ -241,12 +241,13 @@ def create_product():
     cur = conn.cursor()
 
     logger.debug(f'POST /product - payload: {payload}')
+    type_product = payload['type']
 
-    if payload['type'] == Product_type['Computer']:
+    if type_product == Product_type['Computer']:
         p = Computer()
-    elif payload['type'] == Product_type['Television']:
+    elif type_product == Product_type['Television']:
         p = Television()
-    elif payload['type'] == Product_type['Smartphone']:
+    elif type_product == Product_type['Smartphone']:
         p = Smartphone()
     else:
         p = Product()
@@ -275,14 +276,20 @@ def create_product():
         type_product = payload['type']
 
         if type_product == Product_type['Computer']:
-            statement = 'INSERT INTO computer (cpu, gpu, product_id) VALUES (%s, %s, %s)'
-            values = (p.cpu, p.gpu, insert_id)
+            statement = 'INSERT INTO computer ' \
+                        '(cpu, gpu, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s, %s)'
+            values = (p.cpu, p.gpu, insert_id, 1)
         elif type_product == Roles['Smartphone']:
-            statement = 'INSERT INTO smartphone (model, operative_system, product_id) VALUES (%s, %s, %s)'
-            values = (p.model, p.operative_system, insert_id)
+            statement = 'INSERT INTO smartphone ' \
+                        '(model, operative_system, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s)'
+            values = (p.model, p.operative_system, insert_id, 1)
         else:
-            statement = 'INSERT INTO television (size, technology, product_id) VALUES (%s, %s, %s)'
-            values = (p.size, p.technology, insert_id)
+            statement = 'INSERT INTO television ' \
+                        '(size, technology, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s, %s)'
+            values = (p.size, p.technology, insert_id, 1)
 
         response['result'] = insert_id
 
@@ -327,21 +334,67 @@ def update_product(product_id):
     user_id = session['id']
 
     try:
-        product_statement = 'SELECT seller_id ' \
+        product_statement = 'SELECT id, version, seller_id ' \
                             'FROM product ' \
-                            'WHERE id = %s'
-        values = (product_id, )
+                            'WHERE id = %s AND version = (SELECT MAX(version)' \
+                            '                             FROM product ' \
+                            '                             WHERE id = %s )'
+        values = (product_id, product_id)
 
         cur.execute(product_statement, values)
-        seller_id = cur.fetchone()[0]
-
-        if seller_id is None:
+        product = cur.fetchone()
+        product_id = product[0]
+        if product_id is None:
             return flask.jsonify({}), HTTPStatus.NOT_FOUND
+
+        version = product[1]
+        seller_id = product[2]
 
         if seller_id != user_id:
             return flask.jsonify({}), HTTPStatus.UNAUTHORIZED
 
-        product_statement = ''
+        type_product = payload['type']
+        if type_product == Product_type['Computer']:
+            p = Computer()
+        elif type_product == Product_type['Television']:
+            p = Television()
+        elif type_product == Product_type['Smartphone']:
+            p = Smartphone()
+        else:
+            p = Product()
+
+        error_response = p.bind_json(payload)
+        if error_response:
+            return error_response, HTTPStatus.BAD_REQUEST
+        statement_product = 'INSERT INTO product ' \
+                            '(id, name, price, stock, description, category, seller_id, version) ' \
+                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s)'
+        values_product = (product_id, p.name, p.price, p.stock, p.description, p.category, seller_id, version + 1)
+
+        cur.execute(statement_product, values_product)
+        type_product = payload['type']
+
+        if type_product == Product_type['Computer']:
+            statement = 'INSERT INTO computer ' \
+                        '(cpu, gpu, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s, %s)'
+            values = (p.cpu, p.gpu, product_id, version + 1)
+        elif type_product == Roles['Smartphone']:
+            statement = 'INSERT INTO smartphone ' \
+                        '(model, operative_system, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s, %s)'
+            values = (p.model, p.operative_system, product_id, version + 1)
+        else:
+            statement = 'INSERT INTO television ' \
+                        '(size, technology, product_id, product_version) ' \
+                        'VALUES (%s, %s, %s, %s)'
+            values = (p.size, p.technology, product_id, version + 1)
+
+        response['result'] = product_id
+
+        cur.execute(statement, values)
+        conn.commit()
+
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
         response = {'error': str(error)}
