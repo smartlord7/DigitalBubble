@@ -1,5 +1,20 @@
 -- DDL
 
+--/*
+DROP TABLE classification;
+DROP TABLE "comment";
+DROP TABLE "order";
+DROP TABLE television;
+DROP TABLE smartphone;
+DROP TABLE computer;
+DROP TABLE product;
+DROP TABLE item;
+DROP TABLE "admin";
+DROP TABLE buyer;
+DROP TABLE notification;
+DROP TABLE seller;
+DROP TABLE "user";
+--*/
 
 CREATE TABLE IF NOT EXISTS public.admin
 (
@@ -10,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.admin
 CREATE TABLE IF NOT EXISTS public.buyer
 (
     user_id bigint NOT NULL,
-    CONSTRAINT buyer_pkey PRIMARY KEY (user_id)
+    CONSTRAINT buyer_pkey1 PRIMARY KEY (user_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.classification
@@ -23,11 +38,12 @@ CREATE TABLE IF NOT EXISTS public.classification
 
 CREATE TABLE IF NOT EXISTS public.comment
 (
-    id integer NOT NULL DEFAULT nextval('comment_id_seq'::regclass),
+    id SERIAL,
     text character varying(512) COLLATE pg_catalog."default" NOT NULL,
     parent_id bigint,
     user_id bigint NOT NULL,
-    product_id bigint NOT NULL
+    product_id bigint NOT NULL,
+    CONSTRAINT comment_pkey PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS public.computer
@@ -48,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.item
 
 CREATE TABLE IF NOT EXISTS public.notification
 (
-    id integer NOT NULL DEFAULT nextval('notification_id_seq'::regclass),
+    id SERIAL,
     title character varying(512) COLLATE pg_catalog."default" NOT NULL,
     description character varying(512) COLLATE pg_catalog."default",
     user_id bigint,
@@ -57,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.notification
 
 CREATE TABLE IF NOT EXISTS public."order"
 (
-    id integer NOT NULL DEFAULT nextval('order_id_seq'::regclass),
+    id SERIAL,
     order_timestamp timestamp without time zone NOT NULL,
     buyer_id bigint NOT NULL,
     is_complete boolean NOT NULL,
@@ -82,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.seller
 (
     company_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
     user_id bigint NOT NULL,
-    CONSTRAINT seller_pkey PRIMARY KEY (user_id)
+    CONSTRAINT seller_pkey1 PRIMARY KEY (user_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.smartphone
@@ -103,7 +119,7 @@ CREATE TABLE IF NOT EXISTS public.television
 
 CREATE TABLE IF NOT EXISTS public."user"
 (
-    id integer NOT NULL DEFAULT nextval('user_id_seq'::regclass),
+    id SERIAL,
     user_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
     first_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
     email character varying(512) COLLATE pg_catalog."default" NOT NULL,
@@ -193,8 +209,6 @@ ALTER TABLE IF EXISTS public.television
 CREATE INDEX IF NOT EXISTS fki_television_fk1
     ON public.television(product_version, product_id);
 
-END;
-
 -- Stored Procedures/Functions
 
 CREATE OR REPLACE FUNCTION OnInsertOrder() RETURNS TRIGGER
@@ -230,7 +244,7 @@ BEGIN
 	
 	RETURN NEW;
 END;
-$$
+$$;
 
 CREATE OR REPLACE FUNCTION OnInsertClassification() RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -259,31 +273,31 @@ BEGIN
 	
 	RETURN NEW;
 END;
-$$
+$$;
 -- Triggers
 
 CREATE OR REPLACE TRIGGER OnInsertOrder
 AFTER UPDATE ON "order"
 FOR EACH ROW
 WHEN (NEW.is_complete = '1')
-EXECUTE FUNCTION OnInsertOrder()
+EXECUTE FUNCTION OnInsertOrder();
 
 CREATE OR REPLACE TRIGGER OnInsertClassification
 AFTER INSERT ON classification
 FOR EACH ROW
-EXECUTE FUNCTION OnInsertClassification()
+EXECUTE FUNCTION OnInsertClassification();
 
 -- DML
 
 -- password: hello
 INSERT INTO "user"
-(id, name, first_name, email, tin, last_name, phone_number, password_hash, house_no, street_name, city, state, zip_code)
+(id, user_name, first_name, email, tin, last_name, phone_number, password_hash, house_no, street_name, city, state, zip_code, role)
 VALUES
 (0, 'admin', 'Admin', 'admin@digitalbubble.com', '000000000', 'Administrator', 
  '+351999999999', 
  '9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043',
- 1, 'Street', 'City', 'State', '1000-100');
+ 1, 'Street', 'City', 'State', '1000-100', 0);
  
  INSERT INTO "admin"
- (id)
+ (user_id)
  VALUES (0)
