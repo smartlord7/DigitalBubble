@@ -463,10 +463,12 @@ def rate_product(product_id):
 
         classification_statement = 'INSERT INTO classification ' \
                                    '(rating, comment, buyer_id, product_id) ' \
-                                   'VALUES (%s, %s, %s, %s)'
+                                   'VALUES (%s, %s, %s, %s) returning id'
         values = (c.rating, c.comment, buyer_id, product_id)
 
         cur.execute(classification_statement, values)
+        classification_id = cur.fetchone()
+        response['result'] = classification_id
         conn.commit()
 
     except (Exception, psycopg2.DatabaseError) as error:
