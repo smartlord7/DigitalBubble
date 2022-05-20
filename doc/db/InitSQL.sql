@@ -1,6 +1,8 @@
 -- DDL
 
 --/*
+--CREATE DATABASE DigitalBubble;
+
 DROP TABLE classification;
 DROP TABLE "comment";
 DROP TABLE "order";
@@ -138,8 +140,8 @@ CREATE TABLE IF NOT EXISTS public."user"
     CONSTRAINT user_pkey PRIMARY KEY (id),
     CONSTRAINT user_email_key UNIQUE (email),
     CONSTRAINT user_name_key UNIQUE (user_name),
-    CONSTRAINT user_phone_number_key UNIQUE (phone_number)
-	CONSTRAINT user_tin_key UNIQUE (tin),
+    CONSTRAINT user_phone_number_key UNIQUE (phone_number),
+	CONSTRAINT user_tin_key UNIQUE (tin)
 );
 
 ALTER TABLE IF EXISTS public.buyer
@@ -283,7 +285,7 @@ BEGIN
 	
 	RETURN NEW;
 END;
-$$
+$$;
 
 CREATE OR REPLACE FUNCTION OnInsertComment() RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -327,7 +329,7 @@ BEGIN
 	
 	RETURN NEW;
 END;
-$$
+$$;
 
 
 -- Triggers
@@ -346,7 +348,7 @@ EXECUTE FUNCTION OnInsertClassification();
 CREATE OR REPLACE TRIGGER OnInsertComment
 AFTER INSERT ON comment
 FOR EACH ROW
-EXECUTE FUNCTION OnInsertComment()
+EXECUTE FUNCTION OnInsertComment();
 
 
 -- DML
@@ -355,11 +357,8 @@ EXECUTE FUNCTION OnInsertComment()
 INSERT INTO "user"
 (id, user_name, first_name, email, tin, last_name, phone_number, password_hash, house_no, street_name, city, state, zip_code, role)
 VALUES
-(0, 'admin', 'Admin', 'admin@digitalbubble.com', '000000000', 'Administrator', 
- '+351999999999', 
+(0, 'admin', 'Admin', 'admin@digitalbubble.com', '000000000', 'Administrator', '+351999999999', 
  '9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043',
  1, 'Street', 'City', 'State', '1000-100', 0);
  
- INSERT INTO "admin"
- (user_id)
- VALUES (0)
+ INSERT INTO "admin" (user_id) VALUES (0)
