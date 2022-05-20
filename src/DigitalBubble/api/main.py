@@ -700,20 +700,20 @@ def get_product(product_id):
 
     try:
         statement = 'SELECT description, name, stock, category, 0 AS "Order", \'0\' AS "sub_order" FROM product WHERE ' \
-                    'id = 1 AND version = (SELECT MAX(version) FROM product WHERE id = 1) ' \
+                    'id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s) ' \
                     'UNION ' \
                     'SELECT CAST(price AS VARCHAR), CAST(update_timestamp AS VARCHAR) as "time", NULL, NULL, ' \
                     '1 AS "Order", ' \
-                    'CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" FROM product WHERE id = 1 ' \
+                    'CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" FROM product WHERE id = %s ' \
                     'UNION ' \
                     'SELECT CAST(ROUND(AVG(rating), 2) AS VARCHAR), NULL, NULL, NULL, 2 AS "Order", \'0\' AS ' \
                     '"sub_order" ' \
-                    'FROM classification WHERE product_id = 1 ' \
+                    'FROM classification WHERE product_id = %s ' \
                     'UNION ' \
-                    'SELECT comment, NULL, NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM classification WHERE ' \
-                    'product_id = 1 ' \
+                    'SELECT text, CAST(id AS VARCHAR), NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM comment WHERE ' \
+                    'product_id = %s ' \
                     'ORDER BY "Order", "sub_order" DESC'
-        values = (product_id, product_id)
+        values = (product_id, product_id, product_id, product_id, product_id,)
 
         cur.execute(statement, values)
 
@@ -736,7 +736,7 @@ def get_product(product_id):
             'stock': rows[0][2],
             'category': rows[0][3],
             'prices': prices,
-            'ratings': rating,
+            'rating': rating,
             'comments': comments
         }
 
