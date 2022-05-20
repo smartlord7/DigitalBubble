@@ -273,9 +273,9 @@ def create_product():
         max_product_id = 0
 
     statement_product = 'INSERT INTO product ' \
-                        '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
-                        'VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
-    values_product = (max_product_id + 1, p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
+                        '(id, name, price, stock, description, category, type, seller_id, version, update_timestamp) ' \
+                        'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
+    values_product = (max_product_id + 1, p.name, p.price, p.stock, p.description, p.category, p.type, seller_id, 1)
 
     try:
         cur.execute(statement_product, values_product)
@@ -293,7 +293,7 @@ def create_product():
                             '(model, operative_system, product_id, product_version) ' \
                             'VALUES (%s, %s, %s)'
                 values = (p.model, p.operative_system, product_id, 1)
-            else:
+            elif type_product == Roles['Television']:
                 statement = 'INSERT INTO television ' \
                             '(size, technology, product_id, product_version) ' \
                             'VALUES (%s, %s, %s, %s)'
@@ -342,7 +342,7 @@ def update_product(product_id):
     user_id = session['id']
 
     try:
-        product_statement = 'SELECT id, version, seller_id ' \
+        product_statement = 'SELECT id, version, seller_id, type ' \
                             'FROM product ' \
                             'WHERE id = %s AND version = (SELECT MAX(version)' \
                             '                             FROM product ' \
@@ -357,20 +357,18 @@ def update_product(product_id):
 
         version = product[1]
         seller_id = product[2]
+        type_product = product[3]
 
         if seller_id != user_id:
             return jsonify({}), HTTPStatus.UNAUTHORIZED
 
-        if 'type' in payload:
-            type_product = payload['type']
-            if type_product == Product_type['Computer']:
-                p = Computer()
-            elif type_product == Product_type['Television']:
-                p = Television()
-            elif type_product == Product_type['Smartphone']:
-                p = Smartphone()
-            else:
-                p = Product()
+
+        if type_product == Product_type['Computer']:
+            p = Computer()
+        elif type_product == Product_type['Television']:
+            p = Television()
+        elif type_product == Product_type['Smartphone']:
+            p = Smartphone()
         else:
             p = Product()
 
@@ -378,12 +376,11 @@ def update_product(product_id):
         if model_errors:
             return model_errors, HTTPStatus.BAD_REQUEST
         statement_product = 'INSERT INTO product ' \
-                            '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
-                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
-        values_product = (product_id, p.name, p.price, p.stock, p.description, p.category, seller_id, version + 1)
+                            '(id, name, price, stock, description, category, type, seller_id, version, update_timestamp) ' \
+                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
+        values_product = (product_id, p.name, p.price, p.stock, p.description, p.category, type_product, seller_id, version + 1)
 
         cur.execute(statement_product, values_product)
-        type_product = payload['type']
 
         if type_product == Product_type['Computer']:
             statement = 'INSERT INTO computer ' \
