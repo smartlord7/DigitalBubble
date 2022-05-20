@@ -272,8 +272,9 @@ def create_product():
     if not max_product_id:
         max_product_id = 0
 
-    statement_product = 'INSERT INTO product (id, name, price, stock, description, category, seller_id, version) \
-        VALUES(%s, %s, %s, %s, %s, %s, %s, %s)'
+    statement_product = 'INSERT INTO product ' \
+                        '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
+                        'VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
     values_product = (max_product_id + 1, p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
 
     try:
@@ -377,8 +378,8 @@ def update_product(product_id):
         if model_errors:
             return model_errors, HTTPStatus.BAD_REQUEST
         statement_product = 'INSERT INTO product ' \
-                            '(id, name, price, stock, description, category, seller_id, version) ' \
-                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s)'
+                            '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
+                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
         values_product = (product_id, p.name, p.price, p.stock, p.description, p.category, seller_id, version + 1)
 
         cur.execute(statement_product, values_product)

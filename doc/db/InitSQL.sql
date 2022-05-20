@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.product
     description character varying(512) COLLATE pg_catalog."default",
     seller_id bigint NOT NULL,
     category character varying(256) COLLATE pg_catalog."default" NOT NULL,
+	update_timestamp timestamp without time zone,
     CONSTRAINT product_pkey PRIMARY KEY (id, version),
     CONSTRAINT product_id_version_key UNIQUE (id, version)
 );
