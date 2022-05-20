@@ -1,7 +1,13 @@
 -- DDL
 
---/*
---CREATE DATABASE DigitalBubble;
+CREATE DATABASE "DigitalBubble"
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'Portuguese_Portugal.1252'
+    LC_CTYPE = 'Portuguese_Portugal.1252'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
 
 DROP TABLE classification;
 DROP TABLE "comment";
@@ -16,7 +22,7 @@ DROP TABLE buyer;
 DROP TABLE notification;
 DROP TABLE seller;
 DROP TABLE "user";
---*/
+
 
 CREATE TABLE IF NOT EXISTS public.admin
 (
@@ -35,8 +41,8 @@ CREATE TABLE IF NOT EXISTS public.classification
     rating bigint,
     comment character varying(512) COLLATE pg_catalog."default",
     buyer_id bigint NOT NULL,
-    product_id bigint NOT NULL
-    CONSTRAINT classification_pkey PRIMARY KEY (buyer_id, product_id)
+    product_id bigint NOT NULL,
+    CONSTRAINT classification_pk PRIMARY KEY (buyer_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.comment
@@ -62,7 +68,7 @@ CREATE TABLE IF NOT EXISTS public.item
     quantity integer NOT NULL,
     product_id bigint NOT NULL,
     order_id bigint NOT NULL,
-	CONSTRAINT item_pkey PRIMARY KEY(product_id, order_id)
+    CONSTRAINT item_pkey PRIMARY KEY (product_id, order_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.notification
@@ -71,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.notification
     title character varying(512) COLLATE pg_catalog."default" NOT NULL,
     description character varying(512) COLLATE pg_catalog."default",
     user_id bigint,
+    seen boolean NOT NULL,
     CONSTRAINT notification_pkey PRIMARY KEY (id)
 );
 
@@ -93,10 +100,9 @@ CREATE TABLE IF NOT EXISTS public.product
     description character varying(512) COLLATE pg_catalog."default",
     seller_id bigint NOT NULL,
     category character varying(256) COLLATE pg_catalog."default" NOT NULL,
-	type integer,
-	update_timestamp timestamp without time zone NOT NULL,
-    CONSTRAINT product_pkey PRIMARY KEY (id, version),
-    CONSTRAINT product_id_version_key UNIQUE (id, version)
+    type integer,
+    update_timestamp timestamp without time zone NOT NULL,
+    CONSTRAINT product_pkey PRIMARY KEY (id, version)
 );
 
 CREATE TABLE IF NOT EXISTS public.seller
@@ -142,8 +148,18 @@ CREATE TABLE IF NOT EXISTS public."user"
     CONSTRAINT user_email_key UNIQUE (email),
     CONSTRAINT user_name_key UNIQUE (user_name),
     CONSTRAINT user_phone_number_key UNIQUE (phone_number),
-	CONSTRAINT user_tin_key UNIQUE (tin)
+    CONSTRAINT user_tin_key UNIQUE (tin)
 );
+
+ALTER TABLE IF EXISTS public.admin
+    ADD CONSTRAINT admin_user_fk FOREIGN KEY (user_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_admin_user_fk
+    ON public.admin(user_id);
+
 
 ALTER TABLE IF EXISTS public.buyer
     ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id)
@@ -152,6 +168,16 @@ ALTER TABLE IF EXISTS public.buyer
     ON DELETE NO ACTION;
 CREATE INDEX IF NOT EXISTS buyer_pkey
     ON public.buyer(user_id);
+
+
+ALTER TABLE IF EXISTS public.classification
+    ADD CONSTRAINT classification_user_fk FOREIGN KEY (buyer_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_classification_user_fk
+    ON public.classification(buyer_id);
 
 
 ALTER TABLE IF EXISTS public.comment
@@ -173,11 +199,31 @@ CREATE INDEX IF NOT EXISTS fki_computer_fk1
     ON public.computer(product_version, product_id);
 
 
+ALTER TABLE IF EXISTS public.item
+    ADD CONSTRAINT item_order_fk FOREIGN KEY (order_id)
+    REFERENCES public."order" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_item_order_fk
+    ON public.item(order_id);
+
+
 ALTER TABLE IF EXISTS public.notification
     ADD CONSTRAINT notification_fk1 FOREIGN KEY (user_id)
     REFERENCES public."user" (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public."order"
+    ADD CONSTRAINT order_user_fk FOREIGN KEY (buyer_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_order_user_fk
+    ON public."order"(buyer_id);
 
 
 ALTER TABLE IF EXISTS public.product
