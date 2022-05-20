@@ -612,7 +612,7 @@ def create_comment(product_id, parent_comment_id=None):
         response['result'] = comment_id
 
     except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'POST {app.config["API_PREFIX"]}/order/ - error: {error}')
+        logger.error(f'POST {app.config["API_PREFIX"]}/questions/ - error: {error}')
         response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
@@ -673,6 +673,53 @@ def get_product_stats():
     logger.debug(f'GET /report/year - payload: {payload}')
 
     return jsonify({})
+
+
+@app.route(f'/{app.config["API_PREFIX"]}/notifications', methods=['GET'])
+@authorization(roles="all")
+def get_notifications():
+    logger.info('GET /notifications')
+
+    status = HTTPStatus.OK
+    response = dict()
+    session = get_session()
+    user_id = session['id']
+    logger.debug(f'GET /notifications/')
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    notifications_statement = 'SELECT id, title, description, user_id ' \
+                              'FROM notification ' \
+                              'WHERE user_id = %s'
+    values = (user_id, )
+
+    try:
+        cur.execute(notifications_statement, values)
+        notifications = cur.fetchall()
+
+        results = list()
+        for notification in notifications:
+            results.append({
+                "id": notification[0],
+                "title": notification[1],
+                "description": notification[2],
+                "user_id": notification[3],
+            })
+        response['results'] = results
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'POST {app.config["API_PREFIX"]}/order/ - error: {error}')
+        response['error'] = str(error)
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return jsonify(response), status
 
 
 if __name__ == "__main__":
