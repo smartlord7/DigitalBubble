@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.classification
     comment character varying(512) COLLATE pg_catalog."default",
     buyer_id bigint NOT NULL,
     product_id bigint NOT NULL
+    CONSTRAINT classification_pkey PRIMARY KEY (buyer_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.comment
