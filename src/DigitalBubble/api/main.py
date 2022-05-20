@@ -39,6 +39,8 @@ app.config['HOST'] = '127.0.0.1'
 app.config['APP_PORT'] = 8080
 app.config['DB_PORT'] = 5432
 app.config['DATABASE'] = 'DigitalBubble'
+app.config['USER'] = 'digitalbubbleadmin'
+app.config['PASSWORD'] = 'digitalbubble123#'
 
 logger = None
 conn_fac = None
@@ -63,13 +65,8 @@ def _setup_connection():
     conn_fac.host = app.config['HOST']
     conn_fac.port = app.config['DB_PORT']
     conn_fac.database = app.config['DATABASE']
-
-    print('----------Database credentials----------')
-    user_name = input('User name: ')
-    password = input('Password: ')
-
-    conn_fac.user = user_name
-    conn_fac.password = password
+    conn_fac.user = app.config['USER']
+    conn_fac.password = app.config['PASSWORD']
 
 
 def _start_app():
@@ -234,18 +231,18 @@ def login():
         connection = conn_fac.get_connection()
         cur = connection.cursor()
         stmt = 'SELECT id, role, password_hash  ' \
-               'FROM "user"' \
+               'FROM "user" ' \
                'WHERE user_name = %s'
         val = (user_name, )
 
         cur.execute(stmt, val)
         rows = cur.fetchone()
 
-        if len(rows) == 0:
+        if not rows or len(rows) == 0:
             error = f'User {user_name} not found'
             logger.error(f'PUT /user/ - error: {error}')
             response['error'] = str(error)
-            status = HTTPStatus.BAD_REQUEST
+            status = HTTPStatus.NOT_FOUND
         else:
             user = rows
             password = payload['password']
@@ -327,29 +324,31 @@ def create_product():
 
         stmt = 'INSERT INTO product ' \
                '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
-               'VALUES ((SELECT COALESCE(MAX(id), 0) FROM product, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) ' \
+               'VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM product), %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) ' \
                'returning id '
         val = (p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
 
         cur.execute(stmt, val)
         product_id = cur.fetchone()
-        if type_product == ProductType['Computer']:
-            stmt = 'INSERT INTO computer ' \
-                   '(cpu, gpu, product_id, product_version) ' \
-                   'VALUES (%s, %s, %s, %s)'
-            val = (p.cpu, p.gpu, product_id, 1)
-        elif type_product == Roles['Smartphone']:
-            stmt = 'INSERT INTO smartphone ' \
-                   '(model, operative_system, product_id, product_version) ' \
-                   'VALUES (%s, %s, %s)'
-            val = (p.model, p.operative_system, product_id, 1)
-        elif type_product == Roles['Television']:
-            stmt = 'INSERT INTO television ' \
-                   '(size, technology, product_id, product_version) ' \
-                   'VALUES (%s, %s, %s, %s)'
-            val = (p.size, p.technology, product_id, 1)
 
-        cur.execute(stmt, val)
+        if type_product:
+            if type_product == ProductType['Computer']:
+                stmt = 'INSERT INTO computer ' \
+                       '(cpu, gpu, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s, %s)'
+                val = (p.cpu, p.gpu, product_id, 1)
+            elif type_product == Roles['Smartphone']:
+                stmt = 'INSERT INTO smartphone ' \
+                       '(model, operative_system, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s)'
+                val = (p.model, p.operative_system, product_id, 1)
+            elif type_product == Roles['Television']:
+                stmt = 'INSERT INTO television ' \
+                       '(size, technology, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s, %s)'
+                val = (p.size, p.technology, product_id, 1)
+
+            cur.execute(stmt, val)
         connection.commit()
 
         response['result'] = product_id
@@ -400,6 +399,7 @@ def update_product(product_id):
         cur.execute(product_statement, values)
         product = cur.fetchone()
         product_id = product[0]
+
         if product_id is None:
             return jsonify({}), HTTPStatus.NOT_FOUND
 
@@ -431,27 +431,28 @@ def update_product(product_id):
 
         cur.execute(statement_product, values_product)
 
-        if type_product == ProductType['Computer']:
-            statement = 'INSERT INTO computer ' \
-                        '(cpu, gpu, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s, %s)'
-            values = (p.cpu, p.gpu, product_id, version + 1)
-        elif type_product == Roles['Smartphone']:
-            statement = 'INSERT INTO smartphone ' \
-                        '(model, operative_system, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s, %s)'
-            values = (p.model, p.operative_system, product_id, version + 1)
-        else:
-            statement = 'INSERT INTO television ' \
-                        '(size, technology, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s, %s)'
-            values = (p.size, p.technology, product_id, version + 1)
+        if type_product:
+            if type_product == ProductType['Computer']:
+                stmt = 'INSERT INTO computer ' \
+                            '(cpu, gpu, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s, %s)'
+                val = (p.cpu, p.gpu, product_id, version + 1)
+            elif type_product == Roles['Smartphone']:
+                stmt = 'INSERT INTO smartphone ' \
+                            '(model, operative_system, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s, %s)'
+                val = (p.model, p.operative_system, product_id, version + 1)
+            else:
+                stmt = 'INSERT INTO television ' \
+                            '(size, technology, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s, %s)'
+                val = (p.size, p.technology, product_id, version + 1)
 
-        response['result'] = product_id
+            cur.execute(stmt, val)
 
-        cur.execute(statement, values)
         connection.commit()
 
+        response['result'] = product_id
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
         response['error'] = str(error)
