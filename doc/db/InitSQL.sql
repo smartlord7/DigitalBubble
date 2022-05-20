@@ -1,217 +1,199 @@
 -- DDL
 
-CREATE TABLE product (
-	id		 BIGINT UNIQUE,
-	version	 BIGINT UNIQUE,
-	name		 VARCHAR(512) NOT NULL,
-	price		 FLOAT(8) NOT NULL,
-	stock		 INTEGER NOT NULL,
-	category 		 VARCHAR(256) NOT NULL,
-	description	 VARCHAR(512),
-	seller_id BIGINT NOT NULL,
-	PRIMARY KEY(id, version)
+
+CREATE TABLE IF NOT EXISTS public.admin
+(
+    user_id bigint NOT NULL,
+    CONSTRAINT admin_pkey PRIMARY KEY (user_id)
 );
 
-CREATE TABLE computer (
-	cpu		 VARCHAR(512) NOT NULL,
-	gpu		 VARCHAR(512),
-	product_id	 BIGINT,
-	PRIMARY KEY(product_id)
+CREATE TABLE IF NOT EXISTS public.buyer
+(
+    user_id bigint NOT NULL,
+    CONSTRAINT buyer_pkey PRIMARY KEY (user_id)
 );
 
-CREATE TABLE "user" (
-	id		 SERIAL,
-	user_name	 VARCHAR(512) UNIQUE NOT NULL,
-	first_name	 VARCHAR(512) NOT NULL,
-	email	 VARCHAR(512) UNIQUE NOT NULL,
-	tin		 VARCHAR(512),
-	last_name	 VARCHAR(512) NOT NULL,
-	phone_number	 VARCHAR(512) UNIQUE NOT NULL,
-	password_hash VARCHAR(128) NOT NULL,
-	house_no	 INTEGER NOT NULL,
-	street_name	 VARCHAR(512) NOT NULL,
-	city	 VARCHAR(512) NOT NULL,
-	state	 VARCHAR(512) NOT NULL,
-	zip_code	 VARCHAR(64) NOT NULL,
-	PRIMARY KEY(id)
+CREATE TABLE IF NOT EXISTS public.classification
+(
+    rating bigint,
+    comment character varying(512) COLLATE pg_catalog."default",
+    buyer_id bigint NOT NULL,
+    product_id bigint NOT NULL
 );
 
-CREATE TABLE television (
-	size		 INTEGER NOT NULL,
-	technology	 VARCHAR(512) NOT NULL,
-	product_id	 BIGINT,
-	PRIMARY KEY(product_id)
+CREATE TABLE IF NOT EXISTS public.comment
+(
+    id integer NOT NULL DEFAULT nextval('comment_id_seq'::regclass),
+    text character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    parent_id bigint,
+    user_id bigint NOT NULL,
+    product_id bigint NOT NULL
 );
 
-CREATE TABLE smartphone (
-	model		 VARCHAR(512) NOT NULL,
-	operative_system VARCHAR(512) NOT NULL,
-	product_id	 BIGINT,
-	PRIMARY KEY(product_id)
+CREATE TABLE IF NOT EXISTS public.computer
+(
+    cpu character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    gpu character varying(512) COLLATE pg_catalog."default",
+    product_id bigint NOT NULL,
+    product_version bigint
 );
 
-CREATE TABLE notification (
-	id		 SERIAL,
-	title	 VARCHAR(512) NOT NULL,
-	description VARCHAR(512),
-	PRIMARY KEY(id)
+CREATE TABLE IF NOT EXISTS public.item
+(
+    quantity integer NOT NULL,
+    product_id bigint NOT NULL,
+    order_id bigint NOT NULL,
+    CONSTRAINT item_product_id_key UNIQUE (product_id)
 );
 
-CREATE TABLE comment (
-	id	 SERIAL,
-	text	 VARCHAR(512) NOT NULL,
-	parentid BIGINT,
-	user_id		 BIGINT NOT NULL,
-	product_id	 BIGINT NOT NULL,
-	product_version	 BIGINT NOT NULL,
-	notification_id	 BIGINT,
-	PRIMARY KEY(notification_id)
+CREATE TABLE IF NOT EXISTS public.notification
+(
+    id integer NOT NULL DEFAULT nextval('notification_id_seq'::regclass),
+    title character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    description character varying(512) COLLATE pg_catalog."default",
+    user_id bigint,
+    CONSTRAINT notification_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE item (
-	quantity	 INTEGER NOT NULL,
-	product_id	 BIGINT UNIQUE NOT NULL,
-	product_version BIGINT UNIQUE NOT NULL,
-	notification_id	 BIGINT,
-	PRIMARY KEY(notification_id)
+CREATE TABLE IF NOT EXISTS public."order"
+(
+    id integer NOT NULL DEFAULT nextval('order_id_seq'::regclass),
+    order_timestamp timestamp without time zone NOT NULL,
+    buyer_id bigint NOT NULL,
+    is_complete boolean NOT NULL,
+    CONSTRAINT order_pk1 PRIMARY KEY (id)
 );
 
-CREATE TABLE seller (
-	company_name VARCHAR(512) NOT NULL,
-	user_id	 BIGINT,
-	PRIMARY KEY(user_id)
+CREATE TABLE IF NOT EXISTS public.product
+(
+    id bigint NOT NULL,
+    version bigint NOT NULL,
+    name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    price real NOT NULL,
+    stock integer NOT NULL,
+    description character varying(512) COLLATE pg_catalog."default",
+    seller_id bigint NOT NULL,
+    category character varying(256) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT product_pkey PRIMARY KEY (id, version),
+    CONSTRAINT product_id_version_key UNIQUE (id, version)
 );
 
-CREATE TABLE buyer (
-	user_id BIGINT,
-	PRIMARY KEY(user_id)
+CREATE TABLE IF NOT EXISTS public.seller
+(
+    company_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    user_id bigint NOT NULL,
+    CONSTRAINT seller_pkey PRIMARY KEY (user_id)
 );
 
-CREATE TABLE "order" (
-	id		 SERIAL,
-	order_timestamp TIMESTAMP NOT NULL,
-	buyer_id	 BIGINT NOT NULL,
-	PRIMARY KEY(id)
+CREATE TABLE IF NOT EXISTS public.smartphone
+(
+    model character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    operative_system character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    product_id bigint NOT NULL,
+    product_version bigint NOT NULL
 );
 
-CREATE TABLE classification (
-	rating		 BIGINT,
-	comment	 VARCHAR(512),
-	buyer_id	 BIGINT,
-	product_id	 BIGINT,
-	PRIMARY KEY(buyer_id, product_id)
+CREATE TABLE IF NOT EXISTS public.television
+(
+    size integer NOT NULL,
+    technology character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    product_id bigint NOT NULL,
+    product_version bigint NOT NULL
 );
 
-CREATE TABLE admin (
-	user_id BIGINT,
-	PRIMARY KEY(user_id)
+CREATE TABLE IF NOT EXISTS public."user"
+(
+    id integer NOT NULL DEFAULT nextval('user_id_seq'::regclass),
+    user_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    first_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    email character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    tin character varying(512) COLLATE pg_catalog."default",
+    last_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    phone_number character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    password_hash character varying(128) COLLATE pg_catalog."default" NOT NULL,
+    house_no integer NOT NULL,
+    street_name character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    city character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    state character varying(512) COLLATE pg_catalog."default" NOT NULL,
+    zip_code character varying(64) COLLATE pg_catalog."default" NOT NULL,
+    role integer NOT NULL,
+    CONSTRAINT user_pkey PRIMARY KEY (id),
+    CONSTRAINT user_email_key UNIQUE (email),
+    CONSTRAINT user_name_key UNIQUE (user_name),
+    CONSTRAINT user_phone_number_key UNIQUE (phone_number)
 );
 
-CREATE TABLE item_order (
-	item_id BIGINT,
-	order_id				 BIGINT NOT NULL,
-	PRIMARY KEY(item_id)
-);
+ALTER TABLE IF EXISTS public.buyer
+    ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS buyer_pkey
+    ON public.buyer(user_id);
 
--- Constraints
 
-ALTER TABLE product ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id) REFERENCES seller(user_id);
-ALTER TABLE computer ADD CONSTRAINT computer_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id);
-ALTER TABLE television ADD CONSTRAINT television_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
-ALTER TABLE smartphone ADD CONSTRAINT smartphone_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
-ALTER TABLE comment ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
-ALTER TABLE comment ADD CONSTRAINT comment_fk2 FOREIGN KEY (product_id, product_version) REFERENCES product(id);
-ALTER TABLE comment ADD CONSTRAINT comment_fk4 FOREIGN KEY (notification_id) REFERENCES notification(id);
-ALTER TABLE item ADD CONSTRAINT item_fk1 FOREIGN KEY (notification_id) REFERENCES notification(id);
-ALTER TABLE seller ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
-ALTER TABLE buyer ADD CONSTRAINT buyer_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
-ALTER TABLE "order" ADD CONSTRAINT order_fk1 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk2 FOREIGN KEY (product_id) REFERENCES product(id);
-ALTER TABLE classification ADD CONSTRAINT classification_fk4 FOREIGN KEY (buyer_id) REFERENCES buyer(user_id);
-ALTER TABLE admin ADD CONSTRAINT admin_fk1 FOREIGN KEY (user_id) REFERENCES "user"(id);
-ALTER TABLE item_order ADD CONSTRAINT item_order_fk1 FOREIGN KEY (item_id) REFERENCES item(notification_id);
-ALTER TABLE item_order ADD CONSTRAINT item_order_fk2 FOREIGN KEY (order_id) REFERENCES "order"(id);
+ALTER TABLE IF EXISTS public.comment
+    ADD CONSTRAINT comment_fk1 FOREIGN KEY (user_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS commentuserfk
+    ON public.comment(user_id);
 
--- Indexes
 
--- FK indexes
-CREATE UNIQUE INDEX IF NOT EXISTS ClassificationProductFK
-ON classification(product_id, product_version);
+ALTER TABLE IF EXISTS public.computer
+    ADD CONSTRAINT computer_fk1 FOREIGN KEY (product_version, product_id)
+    REFERENCES public.product (version, id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_computer_fk1
+    ON public.computer(product_version, product_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ClassificationBuyerFK
-ON classification(buyer_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS CommentUserFK
-ON comment(user_id);
+ALTER TABLE IF EXISTS public.notification
+    ADD CONSTRAINT notification_fk1 FOREIGN KEY (user_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
 
-CREATE UNIQUE INDEX IF NOT EXISTS CommentProductFK
-ON comment(product_id, product_version);
 
-CREATE UNIQUE INDEX IF NOT EXISTS CommentNotificationFK
-ON comment(notification_id);
+ALTER TABLE IF EXISTS public.product
+    ADD CONSTRAINT product_fk1 FOREIGN KEY (seller_id)
+    REFERENCES public.seller (user_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
 
-CREATE UNIQUE INDEX IF NOT EXISTS ItemProductFK
-ON item(product_id, product_version);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ItemOrderOrderFK
-ON item_order(order_id);
+ALTER TABLE IF EXISTS public.seller
+    ADD CONSTRAINT seller_fk1 FOREIGN KEY (user_id)
+    REFERENCES public."user" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS seller_pkey
+    ON public.seller(user_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS OrderBuyerFK
-ON "order"(buyer_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ProductSellerFK
-ON product(seller_id);
+ALTER TABLE IF EXISTS public.smartphone
+    ADD CONSTRAINT smartphone_fk1 FOREIGN KEY (product_version, product_id)
+    REFERENCES public.product (version, id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_smartphone_fk1
+    ON public.smartphone(product_version, product_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS SmartphoneProductFK
-ON smartphone(product_id, product_version);
 
-CREATE UNIQUE INDEX IF NOT EXISTS TelevisionProductFK
-ON television(product_id, product_version);
+ALTER TABLE IF EXISTS public.television
+    ADD CONSTRAINT television_fk1 FOREIGN KEY (product_version, product_id)
+    REFERENCES public.product (version, id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+CREATE INDEX IF NOT EXISTS fki_television_fk1
+    ON public.television(product_version, product_id);
 
--- Other indexes
-
-CREATE INDEX ClassificationRating ON classification(rating);
-
-CREATE INDEX ComputerCPU ON computer(cpu);
-
-CREATE INDEX ComputerGPU ON computer(gpu);
-
-CREATE INDEX ProductName ON product(name);
-
-CREATE INDEX ProductPrice ON product(price);
-
-CREATE INDEX ProductType ON product(category);
-
-CREATE INDEX SellerCompanyName ON seller(company_name);
-
-CREATE INDEX SmartphoneModel ON smartphone(model);
-
-CREATE INDEX SmartphoneOS ON smartphone(operative_system);
-
-CREATE INDEX TelevisionSize ON television(size);
-
-CREATE INDEX TelevisionTechnology ON television(technology);
-
-CREATE INDEX UserName ON "user"(user_name);
-
-CREATE UNIQUE INDEX UserEmail ON "user"(email);
-
-CREATE UNIQUE INDEX UserTIN ON "user"(tin);
-
-CREATE UNIQUE INDEX UserPhoneNumber ON "user"(phone_number);
-
--- Triggers
-
-CREATE OR REPLACE TRIGGER OnInsertOrder
-AFTER UPDATE ON "order"
-FOR EACH ROW
-WHEN (NEW.is_complete = '1')
-EXECUTE FUNCTION OnInsertOrder()
-
-CREATE OR REPLACE TRIGGER OnInsertClassification
-AFTER INSERT ON classification
-FOR EACH ROW
-EXECUTE FUNCTION OnInsertClassification()
+END;
 
 -- Stored Procedures/Functions
 
@@ -278,6 +260,18 @@ BEGIN
 	RETURN NEW;
 END;
 $$
+-- Triggers
+
+CREATE OR REPLACE TRIGGER OnInsertOrder
+AFTER UPDATE ON "order"
+FOR EACH ROW
+WHEN (NEW.is_complete = '1')
+EXECUTE FUNCTION OnInsertOrder()
+
+CREATE OR REPLACE TRIGGER OnInsertClassification
+AFTER INSERT ON classification
+FOR EACH ROW
+EXECUTE FUNCTION OnInsertClassification()
 
 -- DML
 
