@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.item
     quantity integer NOT NULL,
     product_id bigint NOT NULL,
     order_id bigint NOT NULL,
-	COSNTRATINT item_pkey PRIMARY KEY(product_id, order_id)
+	CONSTRAINT item_pkey PRIMARY KEY(product_id, order_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.notification
@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS public.product
     description character varying(512) COLLATE pg_catalog."default",
     seller_id bigint NOT NULL,
     category character varying(256) COLLATE pg_catalog."default" NOT NULL,
-	update_timestamp timestamp without time zone,
+	type integer,
+	update_timestamp timestamp without time zone NOT NULL,
     CONSTRAINT product_pkey PRIMARY KEY (id, version),
     CONSTRAINT product_id_version_key UNIQUE (id, version)
 );
@@ -243,6 +244,13 @@ BEGIN
 		FORMAT('%s units of product %s were bought by %s', product.quantity, product_name, buyer_name),
 		seller_id_);
 	END LOOP;
+	
+	INSERT INTO notification
+		(title, description, user_id)
+		VALUES
+		(FORMAT('OD%s has been processed', NEW.id),
+		FORMAT('Your order OD%s of %s has been successfully processed', NEW.id, NEW.order_timestamp),
+		NEW.buyer_id);
 	
 	RETURN NEW;
 END;
