@@ -1,4 +1,4 @@
-Product_type = {
+ProductType = {
     'Computer': 0,
     'Television': 1,
     'Smartphone': 2
