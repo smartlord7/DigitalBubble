@@ -1,27 +1,18 @@
 -- DDL
 
-CREATE DATABASE "DigitalBubble"
-    WITH
-    OWNER = postgres
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'Portuguese_Portugal.1252'
-    LC_CTYPE = 'Portuguese_Portugal.1252'
-    TABLESPACE = pg_default
-    CONNECTION LIMIT = -1;
-
-DROP TABLE classification;
-DROP TABLE "comment";
-DROP TABLE "order";
-DROP TABLE television;
-DROP TABLE smartphone;
-DROP TABLE computer;
-DROP TABLE product;
-DROP TABLE item;
-DROP TABLE "admin";
-DROP TABLE buyer;
-DROP TABLE notification;
-DROP TABLE seller;
-DROP TABLE "user";
+DROP TABLE classification CASCADE;
+DROP TABLE "comment" CASCADE;
+DROP TABLE "order" CASCADE;
+DROP TABLE television CASCADE;
+DROP TABLE smartphone CASCADE;
+DROP TABLE computer CASCADE;
+DROP TABLE product CASCADE;
+DROP TABLE item CASCADE;
+DROP TABLE "admin" CASCADE ;
+DROP TABLE buyer CASCADE;
+DROP TABLE notification CASCADE;
+DROP TABLE seller CASCADE;
+DROP TABLE "user" CASCADE;
 
 
 CREATE TABLE IF NOT EXISTS public.admin
@@ -77,7 +68,6 @@ CREATE TABLE IF NOT EXISTS public.notification
     title character varying(512) COLLATE pg_catalog."default" NOT NULL,
     description character varying(512) COLLATE pg_catalog."default",
     user_id bigint,
-    seen boolean NOT NULL,
     CONSTRAINT notification_pkey PRIMARY KEY (id)
 );
 
