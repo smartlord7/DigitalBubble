@@ -33,14 +33,14 @@ from data.model.product import Product
 from db.connection_factory import ConnectionFactory
 
 app = flask.Flask(__name__)
-app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
-app.config['API_PREFIX'] = 'digitalbubble'
 app.config['HOST'] = '127.0.0.1'
 app.config['APP_PORT'] = 8080
 app.config['DB_PORT'] = 5432
 app.config['DATABASE'] = 'DigitalBubble'
 app.config['USER'] = 'digitalbubbleadmin'
 app.config['PASSWORD'] = 'digitalbubble123#'
+app.config['SECRET_KEY'] = '004f2af45d3a4e161a7dd2d17fdae47f'
+app.config['API_PREFIX'] = 'digitalbubble'
 
 logger = None
 conn_fac = None
