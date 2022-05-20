@@ -449,8 +449,6 @@ def update_product(product_id):
             cur.execute(stmt, val)
 
         connection.commit()
-
-        response['result'] = product_id
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
         response['error'] = str(error)
@@ -710,7 +708,8 @@ def get_product(product_id):
                     '"sub_order" ' \
                     'FROM classification WHERE product_id = %s ' \
                     'UNION ' \
-                    'SELECT text, CAST(id AS VARCHAR), NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM comment WHERE ' \
+                    'SELECT text, CAST(id AS VARCHAR), NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM comment ' \
+                    'WHERE ' \
                     'product_id = %s ' \
                     'ORDER BY "Order", "sub_order" DESC'
         values = (product_id, product_id, product_id, product_id, product_id,)
@@ -777,7 +776,7 @@ def get_stats():
                'JOIN item i ON order_id = id ' \
                'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\'' \
                'GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER) ' \
-
+ \
         cur.execute(stmt)
 
         stats = cur.fetchall()
