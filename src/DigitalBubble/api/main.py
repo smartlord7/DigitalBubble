@@ -23,6 +23,7 @@ from psycopg2 import extensions
 from data.enum.role_enum import Roles
 from data.enum.product_enum import Product_type
 from data.model.classification import Classification
+from data.model.comment import Comment
 from data.model.seller import Seller
 from data.model.user import User
 from data.model.computer import Computer
@@ -60,6 +61,7 @@ def authorization(roles):
             return f(*args, **kwargs)
 
         return decorator
+
     return authorization_
 
 
@@ -121,9 +123,9 @@ def register():
         u = Seller()
     else:
         u = User()
-    error_response = u.bind_json(payload)
-    if error_response:
-        return error_response, HTTPStatus.BAD_REQUEST
+    model_errors = u.bind_json(payload)
+    if model_errors:
+        return model_errors, HTTPStatus.BAD_REQUEST
 
     password_hash = sha512(payload['password'].encode()).hexdigest()
     conn = get_connection()
@@ -154,7 +156,7 @@ def register():
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
-        response = {'error': str(error)}
+        response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
@@ -175,11 +177,12 @@ def login():
     """
 
     logger.info('PUT /user')
-    conn = get_connection()
-    cur = conn.cursor()
+    response = dict()
     payload = flask.request.get_json()
 
     user_name = payload['user_name']
+    conn = get_connection()
+    cur = conn.cursor()
 
     cur.execute('SELECT id, role, password_hash '
                 'FROM "user"'
@@ -203,7 +206,7 @@ def login():
         if password_hash != password_hash2:
             error = f'Wrong password'
             logger.error(f'PUT /user/ - error: {error}')
-            response = {'error': str(error)}
+            response['error'] = str(error)
 
             return jsonify(response), HTTPStatus.BAD_REQUEST
         else:
@@ -253,9 +256,9 @@ def create_product():
     else:
         p = Product()
 
-    error_response = p.bind_json(payload)
-    if error_response:
-        return error_response, HTTPStatus.BAD_REQUEST
+    model_errors = p.bind_json(payload)
+    if model_errors:
+        return model_errors, HTTPStatus.BAD_REQUEST
 
     session = get_session()
     seller_id = session['id']
@@ -299,7 +302,7 @@ def create_product():
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
-        response = {'error': str(error)}
+        response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
@@ -364,9 +367,9 @@ def update_product(product_id):
         else:
             p = Product()
 
-        error_response = p.bind_json(payload)
-        if error_response:
-            return error_response, HTTPStatus.BAD_REQUEST
+        model_errors = p.bind_json(payload)
+        if model_errors:
+            return model_errors, HTTPStatus.BAD_REQUEST
         statement_product = 'INSERT INTO product ' \
                             '(id, name, price, stock, description, category, seller_id, version) ' \
                             'VALUES(%s, %s, %s, %s, %s, %s, %s, %s)'
@@ -398,7 +401,7 @@ def update_product(product_id):
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
-        response = {'error': str(error)}
+        response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
@@ -434,16 +437,16 @@ def rate_product(product_id):
 
     c = Classification()
 
-    error_response = c.bind_json(payload)
-    if error_response:
-        return error_response, HTTPStatus.BAD_REQUEST
+    model_errors = c.bind_json(payload)
+    if model_errors:
+        return model_errors, HTTPStatus.BAD_REQUEST
 
     try:
         buyer_id = session['id']
         statement_product = 'SELECT name ' \
                             'FROM product ' \
                             'WHERE id = %s'
-        values = (product_id, )
+        values = (product_id,)
 
         cur.execute(statement_product, values)
         product = cur.fetchone()
@@ -461,7 +464,7 @@ def rate_product(product_id):
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
-        response = {'error': str(error)}
+        response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
@@ -473,7 +476,7 @@ def rate_product(product_id):
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
-@authorization(roles=[Roles["Buyer"]])
+@authorization(roles=[Roles["Admin"], Roles["Buyer"]])
 def create_order():
     logger.info('POST /order')
     payload = flask.request.get_json()
@@ -481,6 +484,7 @@ def create_order():
     conn = get_connection()
     cur = conn.cursor()
     status = HTTPStatus.OK
+    response = dict()
     session = get_session()
     buyer_id = session['id']
     logger.debug(f'POST /order - payload: {payload}')
@@ -502,7 +506,7 @@ def create_order():
             product_statement = 'SELECT stock ' \
                                 'FROM product ' \
                                 'WHERE id = %s'
-            values = (product_id, )
+            values = (product_id,)
             cur.execute(product_statement, values)
             stock = cur.fetchone()[0]
 
@@ -540,7 +544,7 @@ def create_order():
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/order/ - error: {error}')
-        response = {'error': str(error)}
+        response['error'] = str(error)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
 
         conn.rollback()
@@ -552,9 +556,10 @@ def create_order():
     return jsonify(response), status
 
 
+@app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/', methods=['POST'])
 @app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_comment_id>', methods=['POST'])
 @authorization(roles="all")
-def create_comment(product_id, parent_comment_id):
+def create_comment(product_id, parent_comment_id=None):
     """Function that creates a comment.
 
     Args:
@@ -565,20 +570,58 @@ def create_comment(product_id, parent_comment_id):
     """
 
     logger.info('POST /questions/<product_id>')
-
     logger.debug(f'product_id: {product_id}, parent_comment_id: {parent_comment_id}')
-
     payload = flask.request.get_json()
-
-    conn = get_connection()
-    cur = conn.cursor()
+    status = HTTPStatus.OK
+    response = dict()
 
     logger.debug(f'POST /questions/<product_id> - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return jsonify(response)
+    c = Comment()
+    model_errors = c.bind_json(payload)
+    if model_errors:
+        return model_errors, HTTPStatus.BAD_REQUEST
+
+    conn = get_connection()
+    cur = conn.cursor()
+    session = get_session()
+    user_id = session['id']
+
+    try:
+
+        product_statement = 'SELECT name ' \
+                            'FROM product ' \
+                            'WHERE id = %s'
+        values = (product_id,)
+        cur.execute(product_statement, values)
+        name = cur.fetchone()[0]
+
+        if name is None:
+            status = HTTPStatus.NOT_FOUND
+
+            return jsonify({}), status
+
+        comment_statement = 'INSERT INTO comment ' \
+                            '(text, parent_id, user_id, product_id)' \
+                            'VALUES (%s, %s, %s, %s) returning id'
+        values = (c.text, parent_comment_id, user_id, product_id)
+        cur.execute(comment_statement, values)
+        comment_id = cur.fetchone()
+
+        response['result'] = comment_id
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'POST {app.config["API_PREFIX"]}/order/ - error: {error}')
+        response['error'] = str(error)
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
