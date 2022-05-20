@@ -775,8 +775,8 @@ def get_stats():
                'FROM "order" ' \
                'JOIN item i ON order_id = id ' \
                'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\'' \
-               'GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER) ' \
- \
+               'GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER) '
+
         cur.execute(stmt)
 
         stats = cur.fetchall()
