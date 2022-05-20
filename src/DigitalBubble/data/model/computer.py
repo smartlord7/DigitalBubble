@@ -13,7 +13,6 @@ class Computer(Product):
                 "type": str
             }
 
-
         self.fields["gpu"] = \
             {
                     "required": True,

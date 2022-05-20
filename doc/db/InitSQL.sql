@@ -208,6 +208,11 @@ FOR EACH ROW
 WHEN (NEW.is_complete = '1')
 EXECUTE FUNCTION OnInsertOrder()
 
+CREATE OR REPLACE TRIGGER OnInsertClassification
+AFTER INSERT ON classification
+FOR EACH ROW
+EXECUTE FUNCTION OnInsertClassification()
+
 -- Stored Procedures/Functions
 
 CREATE OR REPLACE FUNCTION OnInsertOrder() RETURNS TRIGGER
@@ -245,6 +250,34 @@ BEGIN
 END;
 $$
 
+CREATE OR REPLACE FUNCTION OnInsertClassification() RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	seller_id_ BIGINT;
+	product_name VARCHAR;
+	buyer_name VARCHAR;
+BEGIN
+	SELECT user_name
+	FROM "user"
+	WHERE id = NEW.buyer_id
+	INTO buyer_name;
+
+	SELECT name, seller_id
+	FROM product
+	WHERE id = NEW.product_id
+	INTO product_name, seller_id_;
+	
+	INSERT INTO notification
+	(title, description, user_id)
+	VALUES
+	(FORMAT('%s was rated %s', product_name, NEW.rating),
+	FORMAT('Product %s was rated %s by %s', product_name, NEW.rating, buyer_name),
+	seller_id_);
+	
+	RETURN NEW;
+END;
+$$
 
 -- DML
 

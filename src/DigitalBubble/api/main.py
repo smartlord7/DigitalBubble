@@ -22,6 +22,7 @@ import psycopg2
 from psycopg2 import extensions
 from data.enum.role_enum import Roles
 from data.enum.product_enum import Product_type
+from data.model.classification import Classification
 from data.model.seller import Seller
 from data.model.user import User
 from data.model.computer import Computer
@@ -162,7 +163,7 @@ def register():
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response), status
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['PUT'])
@@ -190,7 +191,7 @@ def login():
         error = f'User {user_name} not found'
         logger.error(f'PUT /user/ - error: {error}')
 
-        return flask.jsonify({'error': str(error)}), HTTPStatus.BAD_REQUEST
+        return jsonify({'error': str(error)}), HTTPStatus.BAD_REQUEST
     else:
         user = rows[0]
         password = payload['password']
@@ -204,7 +205,7 @@ def login():
             logger.error(f'PUT /user/ - error: {error}')
             response = {'error': str(error)}
 
-            return flask.jsonify(response), HTTPStatus.BAD_REQUEST
+            return jsonify(response), HTTPStatus.BAD_REQUEST
         else:
             token = jwt.encode(
                 payload={
@@ -220,7 +221,7 @@ def login():
                 'result': token
             }
 
-    return flask.jsonify(response), HTTPStatus.OK
+    return jsonify(response), HTTPStatus.OK
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/product/', methods=['POST'])
@@ -307,7 +308,7 @@ def create_product():
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response), status
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['PUT'])
@@ -345,13 +346,13 @@ def update_product(product_id):
         product = cur.fetchone()
         product_id = product[0]
         if product_id is None:
-            return flask.jsonify({}), HTTPStatus.NOT_FOUND
+            return jsonify({}), HTTPStatus.NOT_FOUND
 
         version = product[1]
         seller_id = product[2]
 
         if seller_id != user_id:
-            return flask.jsonify({}), HTTPStatus.UNAUTHORIZED
+            return jsonify({}), HTTPStatus.UNAUTHORIZED
 
         type_product = payload['type']
         if type_product == Product_type['Computer']:
@@ -405,11 +406,11 @@ def update_product(product_id):
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response), status
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/rating/<product_id>', methods=['POST'])
-@authorization(roles=[Roles["Buyer"]])
+@authorization(roles=[Roles["Admin"], Roles["Buyer"]])
 def rate_product(product_id):
     """Function that rates a product with a rating(0-5) and a comment.
 
@@ -421,20 +422,54 @@ def rate_product(product_id):
     """
 
     logger.info('POST /rating/<product_id>')
-
     logger.debug(f'product_id: {product_id}')
-
     payload = flask.request.get_json()
-
+    response = dict()
+    status = HTTPStatus.OK
+    session = get_session()
     conn = get_connection()
     cur = conn.cursor()
 
-    logger.debug(f'POST /rantiing/<product_id> - payload: {payload}')
+    logger.debug(f'POST /rating/<product_id> - payload: {payload}')
 
-    if 'username' and 'email' and 'password' not in payload:
-        response = {'status': HTTPStatus.BAD_REQUEST,
-                    'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+    c = Classification()
+
+    error_response = c.bind_json(payload)
+    if error_response:
+        return error_response, HTTPStatus.BAD_REQUEST
+
+    try:
+        buyer_id = session['id']
+        statement_product = 'SELECT name ' \
+                            'FROM product ' \
+                            'WHERE id = %s'
+        values = (product_id, )
+
+        cur.execute(statement_product, values)
+        product = cur.fetchone()
+
+        if product[0] is None:
+            return jsonify({}), HTTPStatus.NOT_FOUND
+
+        classification_statement = 'INSERT INTO classification ' \
+                                   '(rating, comment, buyer_id, product_id) ' \
+                                   'VALUES (%s, %s, %s, %s)'
+        values = (c.rating, c.comment, buyer_id, product_id)
+
+        cur.execute(classification_statement, values)
+        conn.commit()
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
+        response = {'error': str(error)}
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/order/', methods=['POST'])
@@ -474,12 +509,12 @@ def create_order():
             if stock is None:
                 status = HTTPStatus.NOT_FOUND
 
-                return flask.jsonify({}), status
+                return jsonify({}), status
 
             if stock < product_quantity:
                 status = HTTPStatus.BAD_REQUEST
 
-                return flask.jsonify({
+                return jsonify({
                     'error': 'Insufficient stock for product: have %d' % stock
                 }), status
 
@@ -514,7 +549,8 @@ def create_order():
         if conn is not None:
             conn.close()
 
-    return flask.jsonify(response), status
+    return jsonify(response), status
+
 
 @app.route(f'/{app.config["API_PREFIX"]}/questions/<product_id>/<parent_comment_id>', methods=['POST'])
 @authorization(roles="all")
@@ -542,7 +578,7 @@ def create_comment(product_id, parent_comment_id):
     if 'username' and 'email' and 'password' not in payload:
         response = {'status': HTTPStatus.BAD_REQUEST,
                     'results': 'invalid input in payload'}
-        return flask.jsonify(response)
+        return jsonify(response)
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/product/<product_id>', methods=['GET'])
@@ -568,7 +604,7 @@ def get_product(product_id):
 
     logger.debug(f'GET /product/<product_id> - payload: {payload}')
 
-    return flask.jsonify({})
+    return jsonify({})
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
@@ -592,7 +628,7 @@ def get_product_stats():
 
     logger.debug(f'GET /report/year - payload: {payload}')
 
-    return flask.jsonify({})
+    return jsonify({})
 
 
 if __name__ == "__main__":
