@@ -245,14 +245,16 @@ def create_product():
     cur = conn.cursor()
 
     logger.debug(f'POST /product - payload: {payload}')
-    type_product = payload['type']
-
-    if type_product == Product_type['Computer']:
-        p = Computer()
-    elif type_product == Product_type['Television']:
-        p = Television()
-    elif type_product == Product_type['Smartphone']:
-        p = Smartphone()
+    if 'type' in payload:
+        type_product = payload['type']
+        if type_product == Product_type['Computer']:
+            p = Computer()
+        elif type_product == Product_type['Television']:
+            p = Television()
+        elif type_product == Product_type['Smartphone']:
+            p = Smartphone()
+        else:
+            p = Product()
     else:
         p = Product()
 
@@ -268,37 +270,38 @@ def create_product():
     max_product_id = cur.fetchone()[0]
 
     if not max_product_id:
-        max_product_id = 1
+        max_product_id = 0
 
     statement_product = 'INSERT INTO product (id, name, price, stock, description, category, seller_id, version) \
-        VALUES(%s, %s, %s, %s, %s, %s, %s, %s) returning id'
-    values_product = (max_product_id, p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
+        VALUES(%s, %s, %s, %s, %s, %s, %s, %s)'
+    values_product = (max_product_id + 1, p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
 
     try:
         cur.execute(statement_product, values_product)
-        insert_id = cur.fetchone()
-        type_product = payload['type']
+        product_id = max_product_id + 1
 
-        if type_product == Product_type['Computer']:
-            statement = 'INSERT INTO computer ' \
-                        '(cpu, gpu, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s, %s)'
-            values = (p.cpu, p.gpu, insert_id, 1)
-        elif type_product == Roles['Smartphone']:
-            statement = 'INSERT INTO smartphone ' \
-                        '(model, operative_system, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s)'
-            values = (p.model, p.operative_system, insert_id, 1)
-        else:
-            statement = 'INSERT INTO television ' \
-                        '(size, technology, product_id, product_version) ' \
-                        'VALUES (%s, %s, %s, %s)'
-            values = (p.size, p.technology, insert_id, 1)
+        if 'type' in payload:
+            type_product = payload['type']
+            if type_product == Product_type['Computer']:
+                statement = 'INSERT INTO computer ' \
+                            '(cpu, gpu, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s, %s)'
+                values = (p.cpu, p.gpu, product_id, 1)
+            elif type_product == Roles['Smartphone']:
+                statement = 'INSERT INTO smartphone ' \
+                            '(model, operative_system, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s)'
+                values = (p.model, p.operative_system, product_id, 1)
+            else:
+                statement = 'INSERT INTO television ' \
+                            '(size, technology, product_id, product_version) ' \
+                            'VALUES (%s, %s, %s, %s)'
+                values = (p.size, p.technology, product_id, 1)
+            cur.execute(statement, values)
 
-        response['result'] = insert_id
-
-        cur.execute(statement, values)
         conn.commit()
+
+        response['result'] = product_id
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/user/ - error: {error}')
@@ -357,13 +360,16 @@ def update_product(product_id):
         if seller_id != user_id:
             return jsonify({}), HTTPStatus.UNAUTHORIZED
 
-        type_product = payload['type']
-        if type_product == Product_type['Computer']:
-            p = Computer()
-        elif type_product == Product_type['Television']:
-            p = Television()
-        elif type_product == Product_type['Smartphone']:
-            p = Smartphone()
+        if 'type' in payload:
+            type_product = payload['type']
+            if type_product == Product_type['Computer']:
+                p = Computer()
+            elif type_product == Product_type['Television']:
+                p = Television()
+            elif type_product == Product_type['Smartphone']:
+                p = Smartphone()
+            else:
+                p = Product()
         else:
             p = Product()
 
@@ -519,7 +525,7 @@ def create_order():
                 status = HTTPStatus.BAD_REQUEST
 
                 return jsonify({
-                    'error': 'Insufficient stock for product: have %d' % stock
+                    'error': 'Insufficient stock for product %d: have %d' % (product_id, stock)
                 }), status
 
             product_statement = "UPDATE product " \
@@ -652,27 +658,59 @@ def get_product(product_id):
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
-@authorization(roles=Roles["Admin"])
-def get_product_stats():
-    """Function that gets the statistics of a product.
-
-    Args:
-        product_id (int): id of the product you want to get the statistics
-
-    Returns:
-        _type_: _description_
-    """
+@authorization(roles=[Roles["Admin"]])
+def get_stats():
+    """Function that gets a set of global statistics of the platform."""
 
     logger.info('GET /report/year')
-
-    payload = flask.request.get_json()
-
+    response = dict()
+    status = HTTPStatus.OK
     conn = get_connection()
     cur = conn.cursor()
+    logger.debug(f'GET /report/year:')
 
-    logger.debug(f'GET /report/year - payload: {payload}')
+    try:
+        stats_statement = 'SELECT CAST(EXTRACT(MONTH FROM CURRENT_DATE) AS INTEGER) ' \
+                          'UNION ' \
+                          'SELECT COUNT(*) ' \
+                          'FROM "order" ' \
+                          'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\' ' \
+                          'UNION ' \
+                          'SELECT SUM(i.quantity * (SELECT price ' \
+                          ' FROM product p ' \
+                          'WHERE p.id = i.product_id AND ' \
+                          'p.version = (SELECT MAX(version) ' \
+                          'FROM product p ' \
+                          'WHERE p.id = i.product_id))) ' \
+                          'FROM "order" ' \
+                          'JOIN item i ON order_id = id ' \
+                          'WHERE order_timestamp > ' \
+                          'date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\''
+        cur.execute(stats_statement)
+        stats = cur.fetchall()
 
-    return jsonify({})
+        total_value = stats[0][0]
+        orders = stats[1][0]
+        month = stats[2][0]
+
+        response['result'] = {
+            'month': month,
+            'total_value': total_value,
+            'orders': orders
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'POST {app.config["API_PREFIX"]}/questions/ - error: {error}')
+        response['error'] = str(error)
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/notifications', methods=['GET'])

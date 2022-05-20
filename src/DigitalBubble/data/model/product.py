@@ -34,7 +34,7 @@ class Product(BaseModel):
                 },
             "type":
                 {
-                    "required": True,
+                    "required": False,
                     "type": int
                 },
             "description":
