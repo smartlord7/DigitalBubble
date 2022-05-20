@@ -606,6 +606,7 @@ def create_comment(product_id, parent_comment_id=None):
                             'VALUES (%s, %s, %s, %s) returning id'
         values = (c.text, parent_comment_id, user_id, product_id)
         cur.execute(comment_statement, values)
+        conn.commit()
         comment_id = cur.fetchone()
 
         response['result'] = comment_id

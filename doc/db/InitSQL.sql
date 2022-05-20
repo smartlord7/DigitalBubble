@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.item
     quantity integer NOT NULL,
     product_id bigint NOT NULL,
     order_id bigint NOT NULL,
-    CONSTRAINT item_product_id_key UNIQUE (product_id)
+	COSNTRATINT item_pkey PRIMARY KEY(product_id, order_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.notification
@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS public."user"
     CONSTRAINT user_email_key UNIQUE (email),
     CONSTRAINT user_name_key UNIQUE (user_name),
     CONSTRAINT user_phone_number_key UNIQUE (phone_number)
+	CONSTRAINT user_tin_key UNIQUE (tin),
 );
 
 ALTER TABLE IF EXISTS public.buyer
@@ -273,7 +274,53 @@ BEGIN
 	
 	RETURN NEW;
 END;
-$$;
+$$
+
+CREATE OR REPLACE FUNCTION OnInsertComment() RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+	seller_id_ BIGINT;
+	parent_comment_user_id BIGINT;
+	product_name VARCHAR;
+	user_name_ VARCHAR;
+BEGIN
+	SELECT user_name
+	FROM "user"
+	WHERE id = NEW.user_id
+	INTO user_name_;
+
+	SELECT name, seller_id
+	FROM product
+	WHERE id = NEW.product_id
+	INTO product_name, seller_id_;
+	
+	INSERT INTO notification
+	(title, description, user_id)
+	VALUES
+	(FORMAT('%s commented on %s', user_name_, product_name),
+	FORMAT('%s commented on %s: %s', user_name_, product_name, NEW.text),
+	seller_id_);
+	
+	IF NEW.parent_id IS NOT NULL THEN
+		SELECT user_id
+		FROM comment
+		WHERE id = NEW.parent_id
+		INTO parent_comment_user_id;	
+	
+		INSERT INTO notification
+		(title, description, user_id)
+		VALUES
+		(FORMAT('%s answered on %s', user_name_, product_name),
+		FORMAT('%s answered on %s: %s', user_name_, product_name, NEW.text),
+		parent_comment_user_id);
+	END IF;
+	
+	RETURN NEW;
+END;
+$$
+
+
 -- Triggers
 
 CREATE OR REPLACE TRIGGER OnInsertOrder
@@ -286,6 +333,12 @@ CREATE OR REPLACE TRIGGER OnInsertClassification
 AFTER INSERT ON classification
 FOR EACH ROW
 EXECUTE FUNCTION OnInsertClassification();
+
+CREATE OR REPLACE TRIGGER OnInsertComment
+AFTER INSERT ON comment
+FOR EACH ROW
+EXECUTE FUNCTION OnInsertComment()
+
 
 -- DML
 
