@@ -214,7 +214,7 @@ def register():
 @app.route(f'/{app.config["API_PREFIX"]}/user/', methods=['PUT'])
 def login():
     """
-    Function that allows an user to login using its username and password
+    Function that allows a user to login using its username and password
     """
 
     logger.info('PUT /user')
@@ -233,7 +233,7 @@ def login():
         stmt = 'SELECT id, role, password_hash  ' \
                'FROM "user" ' \
                'WHERE user_name = %s'
-        val = (user_name, )
+        val = (user_name,)
 
         cur.execute(stmt, val)
         rows = cur.fetchone()
@@ -379,16 +379,14 @@ def update_product(product_id):
     logger.debug(f'POST /product - payload: {payload}')
 
     response = dict()
-    connection = None
     status = HTTPStatus.OK
 
     session = get_session()
-    connection = conn_fac.get_connection()
-    cur = connection.cursor()
-
     user_id = session['id']
 
     try:
+        connection = conn_fac.get_connection()
+        cur = connection.cursor()
         product_statement = 'SELECT id, version, seller_id, type ' \
                             'FROM product ' \
                             'WHERE id = %s AND version = (SELECT MAX(version)' \
@@ -434,18 +432,18 @@ def update_product(product_id):
         if type_product:
             if type_product == ProductType['Computer']:
                 stmt = 'INSERT INTO computer ' \
-                            '(cpu, gpu, product_id, product_version) ' \
-                            'VALUES (%s, %s, %s, %s)'
+                       '(cpu, gpu, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s, %s)'
                 val = (p.cpu, p.gpu, product_id, version + 1)
             elif type_product == Roles['Smartphone']:
                 stmt = 'INSERT INTO smartphone ' \
-                            '(model, operative_system, product_id, product_version) ' \
-                            'VALUES (%s, %s, %s, %s)'
+                       '(model, operative_system, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s, %s)'
                 val = (p.model, p.operative_system, product_id, version + 1)
             else:
                 stmt = 'INSERT INTO television ' \
-                            '(size, technology, product_id, product_version) ' \
-                            'VALUES (%s, %s, %s, %s)'
+                       '(size, technology, product_id, product_version) ' \
+                       'VALUES (%s, %s, %s, %s)'
                 val = (p.size, p.technology, product_id, version + 1)
 
             cur.execute(stmt, val)
@@ -506,15 +504,11 @@ def rate_product(product_id):
 
         stmt = 'INSERT INTO classification ' \
                '(rating, comment, buyer_id, product_id) ' \
-               'VALUES (%s, %s, %s, %s) returning id'
+               'VALUES (%s, %s, %s, %s)'
         val = (c.rating, c.comment, buyer_id, product_id)
 
         cur.execute(stmt, val)
         connection.commit()
-
-        classification_id = cur.fetchone()
-        response['result'] = classification_id
-
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
         response['error'] = str(error)
@@ -595,15 +589,16 @@ def create_order():
 
             cur.execute(stmt, val)
 
-        stmt = 'UPDATE "order"' \
-               'SET is_complete = %s' \
-               'WHERE id = %s'
-        val = ('1', order_id)
+        if status == HTTPStatus.OK:
+            stmt = 'UPDATE "order"' \
+                   'SET is_complete = %s' \
+                   'WHERE id = %s'
+            val = ('1', order_id)
 
-        cur.execute(stmt, val)
-        connection.commit()
+            cur.execute(stmt, val)
+            connection.commit()
 
-        response['result'] = order_id
+            response['result'] = order_id
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/order/ - error: {error}')
@@ -696,7 +691,6 @@ def get_product(product_id):
     logger.debug(f'product_id: {product_id}')
 
     response = dict()
-    connection = None
     status = HTTPStatus.OK
 
     connection = conn_fac.get_connection()
@@ -709,15 +703,15 @@ def get_product(product_id):
                     'id = 1 AND version = (SELECT MAX(version) FROM product WHERE id = 1) ' \
                     'UNION ' \
                     'SELECT CAST(price AS VARCHAR), CAST(update_timestamp AS VARCHAR) as "time", NULL, NULL, ' \
-                    '1 AS "Order", '\
+                    '1 AS "Order", ' \
                     'CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" FROM product WHERE id = 1 ' \
                     'UNION ' \
                     'SELECT CAST(ROUND(AVG(rating), 2) AS VARCHAR), NULL, NULL, NULL, 2 AS "Order", \'0\' AS ' \
-                    '"sub_order" '\
+                    '"sub_order" ' \
                     'FROM classification WHERE product_id = 1 ' \
                     'UNION ' \
                     'SELECT comment, NULL, NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM classification WHERE ' \
-                    'product_id = 1 '\
+                    'product_id = 1 ' \
                     'ORDER BY "Order", "sub_order" DESC'
         values = (product_id, product_id)
 
@@ -773,36 +767,31 @@ def get_stats():
     try:
         connection = conn_fac.get_connection()
         cur = connection.cursor()
-        stmt = 'SELECT CAST(EXTRACT(MONTH FROM CURRENT_DATE) AS INTEGER), 0 AS "Order" ' \
-               'UNION ' \
-               'SELECT COUNT(*), 1 AS "Order" ' \
-               'FROM "order" ' \
-               'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\' ' \
-               'UNION ' \
-               'SELECT SUM(i.quantity * (SELECT price ' \
-               ' FROM product p ' \
+        stmt = 'SELECT COUNT(*), CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER), SUM(i.quantity * (SELECT price ' \
+               'FROM product p ' \
                'WHERE p.id = i.product_id AND ' \
                'p.version = (SELECT MAX(version) ' \
                'FROM product p ' \
-               'WHERE p.id = i.product_id))), 2 AS "Order" ' \
+               'WHERE p.id = i.product_id))) ' \
                'FROM "order" ' \
                'JOIN item i ON order_id = id ' \
                'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\'' \
-               'ORDER BY "Order"'
+               'GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER) ' \
 
         cur.execute(stmt)
 
         stats = cur.fetchall()
 
-        month = int(stats[0][0])
-        total_value = stats[1][0]
-        orders = int(stats[2][0])
+        months_data = list()
 
-        response['result'] = {
-            'month': month,
-            'total_value': total_value,
-            'orders': orders
-        }
+        for month_stats in stats:
+            months_data.append({
+                'month': month_stats[1],
+                'orders': month_stats[0],
+                'total_value': month_stats[2],
+            })
+
+        response['results'] = months_data
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'POST {app.config["API_PREFIX"]}/questions/ - error: {error}')
