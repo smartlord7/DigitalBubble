@@ -647,14 +647,65 @@ def get_product(product_id):
 
     logger.debug(f'product_id: {product_id}')
 
-    payload = flask.request.get_json()
+    status = HTTPStatus.OK
+    response = dict()
 
     conn = get_connection()
     cur = conn.cursor()
 
-    logger.debug(f'GET /product/<product_id> - payload: {payload}')
+    logger.debug(f'GET /product/<product_id>')
 
-    return jsonify({})
+    try:
+        statement = 'SELECT description, name, stock, category, 0 AS "Order", \'0\' AS "sub_order" FROM product WHERE '\
+                    'id = 1 AND version = (SELECT MAX(version) FROM product WHERE id = 1) '\
+                    'UNION '\
+                    'SELECT CAST(price AS VARCHAR), CAST(update_timestamp AS VARCHAR) as "time", NULL, NULL, 1 AS "Order", '\
+                    'CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" FROM product WHERE id = 1 '\
+                    'UNION '\
+                    'SELECT CAST(ROUND(AVG(rating), 2) AS VARCHAR), NULL, NULL, NULL, 2 AS "Order", \'0\' AS "sub_order" '\
+                    'FROM classification WHERE product_id = 1 ' \
+                    'UNION ' \
+                    'SELECT comment, NULL, NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM classification WHERE product_id = 1 ' \
+                    'ORDER BY "Order", "sub_order" DESC'
+        values = (product_id, product_id)
+
+        cur.execute(statement, values)
+
+        rows = cur.fetchall()
+        prices = list()
+        comments = list()
+        rating = None
+
+        for row in rows:
+            if row[4] == 1:
+                prices.append(row[1] + " - " + row[0])
+            elif row[4] == 2:
+                rating = row[0]
+            elif row[4] == 3:
+                comments.append(row[0])
+
+        response['result'] = {
+            'description': rows[0][0],
+            'name': rows[0][1],
+            'stock': rows[0][2],
+            'category': rows[0][3],
+            'prices': prices,
+            'ratings': rating,
+            'comments': comments
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET {app.config["API_PREFIX"]}/product/<product_id> - error: {error}')
+        response['error'] = str(error)
+        status = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        conn.rollback()
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return jsonify(response), status
 
 
 @app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
