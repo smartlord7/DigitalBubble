@@ -673,9 +673,9 @@ def get_stats():
     logger.debug(f'GET /report/year:')
 
     try:
-        stats_statement = 'SELECT CAST(EXTRACT(MONTH FROM CURRENT_DATE) AS INTEGER) ' \
+        stats_statement = 'SELECT CAST(EXTRACT(MONTH FROM CURRENT_DATE) AS INTEGER), 0 AS "Order" ' \
                           'UNION ' \
-                          'SELECT COUNT(*) ' \
+                          'SELECT COUNT(*), 1 AS "Order" ' \
                           'FROM "order" ' \
                           'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\' ' \
                           'UNION ' \
@@ -684,17 +684,17 @@ def get_stats():
                           'WHERE p.id = i.product_id AND ' \
                           'p.version = (SELECT MAX(version) ' \
                           'FROM product p ' \
-                          'WHERE p.id = i.product_id))) ' \
+                          'WHERE p.id = i.product_id))), 2 AS "Order" ' \
                           'FROM "order" ' \
                           'JOIN item i ON order_id = id ' \
-                          'WHERE order_timestamp > ' \
-                          'date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\''
+                          'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\'' \
+                          'ORDER BY "Order"'
         cur.execute(stats_statement)
         stats = cur.fetchall()
 
-        total_value = stats[0][0]
-        orders = stats[1][0]
-        month = stats[2][0]
+        month = int(stats[0][0])
+        total_value = stats[1][0]
+        orders = int(stats[2][0])
 
         response['result'] = {
             'month': month,
