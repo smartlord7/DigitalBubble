@@ -500,6 +500,18 @@ def rate_product(product_id):
         if product[0] is None:
             return jsonify({}), HTTPStatus.NOT_FOUND
 
+        stmt = 'SELECT * ' \
+            'FROM item i ' \
+            'WHERE i.product_id = %s AND ' \
+            'i.order_id IN ' \
+            '(SELECT id FROM "order" WHERE buyer_id = %s AND is_complete IS TRUE)'
+        val = (product_id, buyer_id)
+        cur.execute(stmt, val)
+        order = cur.fetchone()
+
+        if order is None:
+            return jsonify({'error': 'user has not bought product with id %s' % product_id}), HTTPStatus.BAD_REQUEST
+
         stmt = 'INSERT INTO classification ' \
                '(rating, comment, buyer_id, product_id) ' \
                'VALUES (%s, %s, %s, %s)'
