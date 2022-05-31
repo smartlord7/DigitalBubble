@@ -733,7 +733,7 @@ def get_product(product_id):
     return jsonify(response), status
 
 
-@app.route(f'/{app.config["API_PREFIX"]}/report/year', methods=['GET'])
+@app.route(f'/{app.config["API_PREFIX"]}/report/year/', methods=['GET'])
 @authorization(roles=[Roles["Admin"]])
 def get_stats():
     """Function that gets a set of global statistics of the platform."""
@@ -784,7 +784,7 @@ def get_stats():
     return jsonify(response), status
 
 
-@app.route(f'/{app.config["API_PREFIX"]}/notifications', methods=['GET'])
+@app.route(f'/{app.config["API_PREFIX"]}/notifications/', methods=['GET'])
 @authorization(roles="all")
 def get_notifications():
     logger.debug(f'GET /notifications/')
