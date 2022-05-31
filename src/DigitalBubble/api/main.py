@@ -173,8 +173,9 @@ def register():
         connection = conn_fac.get_connection()
         cur = connection.cursor()
 
-        stmt = 'INSERT INTO "user" (user_name, first_name, email, tin, role, last_name, phone_number, password_hash, \
-            house_no, street_name, city, state, zip_code) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id'
+        stmt = """INSERT INTO "user" (user_name, first_name, email, tin, role, last_name, phone_number, password_hash, 
+                house_no, street_name, city, state, zip_code) 
+                VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id"""
         val = (u.user_name, u.first_name, u.email, u.tin, u.role, u.last_name,
                u.phone_number, password_hash, u.house_no, u.street_name,
                u.city, u.state, u.zip_code)
@@ -230,9 +231,7 @@ def login():
     try:
         connection = conn_fac.get_connection()
         cur = connection.cursor()
-        stmt = 'SELECT id, role, password_hash  ' \
-               'FROM "user" ' \
-               'WHERE user_name = %s'
+        stmt = 'SELECT id, role, password_hash FROM "user" WHERE user_name = %s'
         val = (user_name,)
 
         cur.execute(stmt, val)
@@ -322,10 +321,9 @@ def create_product():
         connection = conn_fac.get_connection()
         cur = connection.cursor()
 
-        stmt = 'INSERT INTO product ' \
-               '(id, name, price, stock, description, category, seller_id, version, update_timestamp) ' \
-               'VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM product), %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) ' \
-               'returning id '
+        stmt = """INSERT INTO product (id, name, price, stock, description, category, seller_id, version, update_timestamp) 
+               VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM product), %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP) 
+               returning id """
         val = (p.name, p.price, p.stock, p.description, p.category, seller_id, 1)
 
         cur.execute(stmt, val)
@@ -333,19 +331,15 @@ def create_product():
 
         if type_product:
             if type_product == ProductType['Computer']:
-                stmt = 'INSERT INTO computer ' \
-                       '(cpu, gpu, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO computer (cpu, gpu, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.cpu, p.gpu, product_id, 1)
+
             elif type_product == ProductType['Smartphone']:
-                stmt = 'INSERT INTO smartphone ' \
-                       '(model, operative_system, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO smartphone (model, operative_system, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.model, p.operative_system, product_id, 1)
+
             elif type_product == ProductType['Television']:
-                stmt = 'INSERT INTO television ' \
-                       '(size, technology, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO television (size, technology, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.size, p.technology, product_id, 1)
 
             cur.execute(stmt, val)
@@ -387,11 +381,8 @@ def update_product(product_id):
     try:
         connection = conn_fac.get_connection()
         cur = connection.cursor()
-        product_statement = 'SELECT id, version, seller_id, type ' \
-                            'FROM product ' \
-                            'WHERE id = %s AND version = (SELECT MAX(version)' \
-                            '                             FROM product ' \
-                            '                             WHERE id = %s )'
+        product_statement = """SELECT id, version, seller_id, type FROM product
+                            WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s)"""
         values = (product_id, product_id)
 
         cur.execute(product_statement, values)
@@ -420,30 +411,24 @@ def update_product(product_id):
         model_errors = p.bind_json(payload)
         if model_errors:
             return model_errors, HTTPStatus.BAD_REQUEST
-        statement_product = 'INSERT INTO product ' \
-                            '(id, name, price, stock, description, category,' \
-                            'type, seller_id, version, update_timestamp) ' \
-                            'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)'
-        values_product = (
-            product_id, p.name, p.price, p.stock, p.description, p.category, type_product, seller_id, version + 1)
+        statement_product = """INSERT INTO product (id, name, price, stock, description, category, type, seller_id, version, update_timestamp) 
+                            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)"""
+
+        values_product = (product_id, p.name, p.price, p.stock, p.description, p.category, type_product, seller_id, version + 1)
 
         cur.execute(statement_product, values_product)
 
         if type_product:
             if type_product == ProductType['Computer']:
-                stmt = 'INSERT INTO computer ' \
-                       '(cpu, gpu, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO computer (cpu, gpu, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.cpu, p.gpu, product_id, version + 1)
+
             elif type_product == Roles['Smartphone']:
-                stmt = 'INSERT INTO smartphone ' \
-                       '(model, operative_system, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO smartphone (model, operative_system, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.model, p.operative_system, product_id, version + 1)
+
             else:
-                stmt = 'INSERT INTO television ' \
-                       '(size, technology, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s, %s)'
+                stmt = 'INSERT INTO television (size, technology, product_id, product_version) VALUES (%s, %s, %s, %s)'
                 val = (p.size, p.technology, product_id, version + 1)
 
             cur.execute(stmt, val)
@@ -489,10 +474,9 @@ def rate_product(product_id):
     try:
         connection = conn_fac.get_connection()
         cur = connection.cursor()
-        stmt = 'SELECT name ' \
-               'FROM product ' \
-               'WHERE id = %s'
-        val = (product_id,)
+        stmt = """SELECT name FROM PRODUCT 
+                WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s)"""
+        val = (product_id, product_id,)
 
         cur.execute(stmt, val)
         product = cur.fetchone()
@@ -500,21 +484,18 @@ def rate_product(product_id):
         if product[0] is None:
             return jsonify({}), HTTPStatus.NOT_FOUND
 
-        stmt = 'SELECT * ' \
-            'FROM item i ' \
-            'WHERE i.product_id = %s AND ' \
-            'i.order_id IN ' \
-            '(SELECT id FROM "order" WHERE buyer_id = %s AND is_complete IS TRUE)'
+        stmt = """SELECT * FROM item i 
+                WHERE i.product_id = %s AND i.order_id IN 
+                (SELECT id FROM "order" WHERE buyer_id = %s AND is_complete IS TRUE)"""
         val = (product_id, buyer_id)
+
         cur.execute(stmt, val)
         order = cur.fetchone()
 
         if order is None:
             return jsonify({'error': 'user has not bought product with id %s' % product_id}), HTTPStatus.BAD_REQUEST
 
-        stmt = 'INSERT INTO classification ' \
-               '(rating, comment, buyer_id, product_id) ' \
-               'VALUES (%s, %s, %s, %s)'
+        stmt = 'INSERT INTO classification (rating, comment, buyer_id, product_id) VALUES (%s, %s, %s, %s)'
         val = (c.rating, c.comment, buyer_id, product_id)
 
         cur.execute(stmt, val)
@@ -551,9 +532,7 @@ def create_order():
         connection.set_isolation_level(extensions.ISOLATION_LEVEL_SERIALIZABLE)
         cur = connection.cursor()
 
-        stmt = 'INSERT INTO "order"' \
-               '(order_timestamp, buyer_id, is_complete)' \
-               'VALUES (CURRENT_TIMESTAMP, %s, %s) returning id'
+        stmt = 'INSERT INTO "order" (order_timestamp, buyer_id, is_complete) VALUES (CURRENT_TIMESTAMP, %s, %s) returning id'
         val = (buyer_id, '0')
 
         cur.execute(stmt, val)
@@ -565,10 +544,8 @@ def create_order():
             product_id = item[0]
             product_quantity = item[1]
 
-            stmt = 'SELECT stock ' \
-                   'FROM product ' \
-                   'WHERE id = %s'
-            val = (product_id,)
+            stmt = 'SELECT stock FROM product WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s)'
+            val = (product_id, product_id,)
             cur.execute(stmt, val)
 
             stock = cur.fetchone()[0]
@@ -585,16 +562,12 @@ def create_order():
 
                 break
 
-            stmt = "UPDATE product " \
-                   "SET stock = stock - %s " \
-                   "WHERE id = %s"
-            val = (product_quantity, product_id)
+            stmt = 'UPDATE product SET stock = stock - %s WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s)'
+            val = (product_quantity, product_id, product_id,)
 
             cur.execute(stmt, val)
 
-            stmt = 'INSERT INTO item' \
-                   '(quantity, product_id, order_id)' \
-                   'VALUES (%s, %s, %s)'
+            stmt = 'INSERT INTO item (quantity, product_id, order_id) VALUES (%s, %s, %s)'
             val = (product_quantity, product_id, order_id)
 
             cur.execute(stmt, val)
@@ -652,10 +625,9 @@ def create_comment(product_id, parent_comment_id=None):
         connection = conn_fac.get_connection()
         cur = connection.cursor()
 
-        stmt = 'SELECT name ' \
-               'FROM product ' \
-               'WHERE id = %s'
-        val = (product_id,)
+        stmt = 'SELECT name FROM product WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s)'
+        val = (product_id, product_id,)
+
         cur.execute(stmt, val)
 
         name = cur.fetchone()[0]
@@ -665,9 +637,7 @@ def create_comment(product_id, parent_comment_id=None):
 
             return jsonify({}), status
 
-        stmt = 'INSERT INTO comment ' \
-               '(text, parent_id, user_id, product_id)' \
-               'VALUES (%s, %s, %s, %s) returning id'
+        stmt = 'INSERT INTO comment (text, parent_id, user_id, product_id) VALUES (%s, %s, %s, %s) returning id'
         val = (c.text, parent_comment_id, user_id, product_id)
 
         cur.execute(stmt, val)
@@ -709,21 +679,19 @@ def get_product(product_id):
     logger.debug(f'GET /product/<product_id>')
 
     try:
-        statement = 'SELECT description, name, stock, category, 0 AS "Order", \'0\' AS "sub_order" FROM product WHERE ' \
-                    'id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s) ' \
-                    'UNION ' \
-                    'SELECT CAST(price AS VARCHAR), CAST(update_timestamp AS VARCHAR) as "time", NULL, NULL, ' \
-                    '1 AS "Order", ' \
-                    'CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" FROM product WHERE id = %s ' \
-                    'UNION ' \
-                    'SELECT CAST(ROUND(AVG(rating), 2) AS VARCHAR), NULL, NULL, NULL, 2 AS "Order", \'0\' AS ' \
-                    '"sub_order" ' \
-                    'FROM classification WHERE product_id = %s ' \
-                    'UNION ' \
-                    'SELECT text, CAST(id AS VARCHAR), NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" FROM comment ' \
-                    'WHERE ' \
-                    'product_id = %s ' \
-                    'ORDER BY "Order", "sub_order" DESC'
+        statement = """SELECT description, name, stock, category, 0 AS "Order", \'0\' AS "sub_order" 
+                    FROM product WHERE id = %s AND version = (SELECT MAX(version) FROM product WHERE id = %s) 
+                    UNION 
+                    SELECT CAST(price AS VARCHAR), CAST(update_timestamp AS VARCHAR) as "time", NULL, NULL, 1 AS "Order", 
+                    CAST(EXTRACT(EPOCH FROM update_timestamp) AS VARCHAR) AS "sub_order" 
+                    FROM product WHERE id = %s 
+                    UNION 
+                    SELECT CAST(ROUND(AVG(rating), 2) AS VARCHAR), NULL, NULL, NULL, 2 AS "Order", \'0\' AS "sub_order" 
+                    FROM classification WHERE product_id = %s 
+                    UNION 
+                    SELECT text, CAST(id AS VARCHAR), NULL, NULL, 3 AS "Order", \'0\' AS "sub_order" 
+                    FROM comment WHERE product_id = %s 
+                    ORDER BY "Order", "sub_order" DESC"""
         values = (product_id, product_id, product_id, product_id, product_id,)
 
         cur.execute(statement, values)
@@ -778,16 +746,14 @@ def get_stats():
     try:
         connection = conn_fac.get_connection()
         cur = connection.cursor()
-        stmt = 'SELECT COUNT(*), CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER), SUM(i.quantity * (SELECT price ' \
-               'FROM product p ' \
-               'WHERE p.id = i.product_id AND ' \
-               'p.version = (SELECT MAX(version) ' \
-               'FROM product p ' \
-               'WHERE p.id = i.product_id))) ' \
-               'FROM "order" ' \
-               'JOIN item i ON order_id = id ' \
-               'WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\'' \
-               'GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER) '
+        stmt = """SELECT COUNT(*), CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER), 
+                SUM(i.quantity * 
+                (SELECT price FROM product p WHERE p.id = i.product_id AND 
+                p.version = (SELECT MAX(version) FROM product p WHERE p.id = i.product_id))) 
+                FROM "order" 
+                JOIN item i ON order_id = id 
+                WHERE order_timestamp > date_trunc(\'month\', CURRENT_DATE) - INTERVAL \'1 year\' 
+                GROUP BY CAST(EXTRACT(MONTH FROM order_timestamp) AS INTEGER)"""
 
         cur.execute(stmt)
 
@@ -833,9 +799,7 @@ def get_notifications():
         connection = conn_fac.get_connection()
         cur = connection.cursor()
 
-        stmt = 'SELECT id, title, description, user_id ' \
-               'FROM notification ' \
-               'WHERE user_id = %s'
+        stmt = 'SELECT id, title, description, user_id FROM notification WHERE user_id = %s'
         val = (user_id,)
 
         cur.execute(stmt, val)
