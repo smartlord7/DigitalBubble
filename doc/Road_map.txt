@@ -1,0 +1,59 @@
+1 - login admin. ("admin", "hello").
+2 - criar buyer e seller (criar seller sem token para testar).
+3 - login dos 3 para guardar os tokens.
+
+Seller
+4 - criar um produto generico.
+5 - update a este produto.
+6 - get product generico.
+7 - criar um produto especifico.
+8 - get produto especifico.
+9 - criar uma order (para testar).
+
+Buyer
+10 - criar uma order.
+11 - verificar notificaçoes.
+12 - criar uma order para esgotar o stock.
+13 - rate a um produto (testar dar duas vezes).
+
+Seller
+14 - verificar as notificaçoes.
+
+Buyer
+15 - deixar um comentario.
+
+Seller
+16 - verificar as notificaçoes.
+
+Admin
+17 - get estatisticas.
+
+
+// Perguntas
+
+Controlo de concorrencia - quando compramos um produto usamos transacao serializaveis
+no resto usamos so transaçoes.
+	
+Desligamos o autocommit.
+
+Iniciamos sempre uma transaçao. No caso de falha damos rollback, no caso de sucesso damos commit.
+
+Usamos Tokens JWT.
+
+Criamos um decorator para verificar se um user tem autorizaçao para esse endpoint.
+
+Criamos primitivas para validaçao automatica dos tipos e obrigatoriadade dos campos
+
+Tambem para encapsular a informaçao que transita enrte o API e frontend.
+
+Triggers - gerar notificações para um comentario, uma encomenda e uma classificaçao.
+
+Achamos redundante mandar o estado pelo payload e enviamo-lo no seu sitio adequado.
+
+Criaçao de index para as foreign keys.
+
+Removemos tabelas adicional (ligaçao 1 para 1), sao redundantes.
+
+Para usarmos uma so query usamos o union. Para o union, é necessario ter o mesmo numero de colunas e o mesmo tipo de dados.
+Para isso, algumas colunas colocamos a null e noutras tivemos de usar cast.
+Tambem convencionamos um valor para cada grupo de dados para conseguirmos distinguir a nivel do API.
