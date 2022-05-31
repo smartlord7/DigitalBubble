@@ -10,11 +10,11 @@ class Smartphone(Product):
         self.fields["model"] = \
             {
                 "required": True,
-                "type": int
+                "type": str
             }
 
-        self.fields["operating_system"] = \
+        self.fields["operative_system"] = \
             {
                 "required": True,
-                "type": int
+                "type": str
             }

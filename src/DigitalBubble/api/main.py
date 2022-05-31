@@ -21,7 +21,7 @@ from flask import request, jsonify
 from http import HTTPStatus
 from psycopg2 import extensions
 from data.enum.role_enum import Roles
-from data.enum.product_enum import ProductType
+from data.enum.product_type_enum import ProductType
 from data.model.classification import Classification
 from data.model.comment import Comment
 from data.model.seller import Seller
@@ -337,12 +337,12 @@ def create_product():
                        '(cpu, gpu, product_id, product_version) ' \
                        'VALUES (%s, %s, %s, %s)'
                 val = (p.cpu, p.gpu, product_id, 1)
-            elif type_product == Roles['Smartphone']:
+            elif type_product == ProductType['Smartphone']:
                 stmt = 'INSERT INTO smartphone ' \
                        '(model, operative_system, product_id, product_version) ' \
-                       'VALUES (%s, %s, %s)'
+                       'VALUES (%s, %s, %s, %s)'
                 val = (p.model, p.operative_system, product_id, 1)
-            elif type_product == Roles['Television']:
+            elif type_product == ProductType['Television']:
                 stmt = 'INSERT INTO television ' \
                        '(size, technology, product_id, product_version) ' \
                        'VALUES (%s, %s, %s, %s)'

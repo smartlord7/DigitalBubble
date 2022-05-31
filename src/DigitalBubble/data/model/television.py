@@ -16,5 +16,5 @@ class Television(Product):
         self.fields["technology"] = \
             {
                 "required": True,
-                "type": int
+                "type": str
             }
