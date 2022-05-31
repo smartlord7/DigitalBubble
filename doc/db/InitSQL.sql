@@ -1,6 +1,7 @@
 -- DDL
 
-DROP TABLE classification CASCADE;
+
+/** DROP TABLE classification CASCADE;
 DROP TABLE "comment" CASCADE;
 DROP TABLE "order" CASCADE;
 DROP TABLE television CASCADE;
@@ -12,7 +13,19 @@ DROP TABLE "admin" CASCADE ;
 DROP TABLE buyer CASCADE;
 DROP TABLE notification CASCADE;
 DROP TABLE seller CASCADE;
-DROP TABLE "user" CASCADE;
+DROP TABLE "user" CASCADE;**/
+
+GRANT SELECT
+ON ALL SEQUENCES IN SCHEMA public
+    TO digitalbubbleadmin;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA public 
+TO digitalbubbleadmin;
+
+GRANT ALL privileges ON SCHEMA public TO digitalbubbleadmin;
+
+GRANT ALL privileges ON DATABASE "DigitalBubble" TO digitalbubbleadmin;
 
 
 CREATE TABLE IF NOT EXISTS public.admin
